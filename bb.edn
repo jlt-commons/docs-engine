@@ -1,0 +1,47 @@
+;; bb.edn — docs-engine, the shared static-site generator for jlt-commons
+;; project documentation.
+;;
+;; Every task takes the path to a project checkout. The engine reads that
+;; project's docs/ and writes its _site/, and touches nothing else.
+{:paths ["src" "test" "resources"]
+ :deps  {markdown-clj/markdown-clj {:mvn/version "1.11.4"}}
+ :tasks
+ {:requires ([site.project :as project])
+
+  :init
+  (def project-dir
+    (fn []
+      (or (first *command-line-args*)
+          (do (println "Usage: bb <task> <path-to-project> [...]")
+              (println "  e.g. bb serve ../raylib-jlt")
+              (System/exit 1)))))
+
+  info  {:doc "What this is and how to point it at a project"
+         :task (do
+                 (println "docs-engine — the jlt-commons documentation site generator\n")
+                 (println "  bb test                        run the test suite")
+                 (println "  bb build <project>             generate <project>/_site/")
+                 (println "  bb serve <project> [port]      build, then serve at localhost:3000")
+                 (println "  bb clean <project>             delete <project>/_site/\n")
+                 (println "A project configures itself in docs/site.edn. See README.md."))}
+
+  test  {:doc "Run the full test suite"
+         :requires ([clojure.test :as t]
+                    [site.markdown-test]
+                    [site.project-test]
+                    [site.core-test])
+         :task (let [{:keys [fail error]} (t/run-tests 'site.markdown-test 'site.project-test 'site.core-test)]
+                 (when (pos? (+ fail error)) (System/exit 1)))}
+
+  build {:doc "Generate a project's site into its _site/ (bb build <project>)"
+         :requires ([site.core :as core])
+         :task (core/generate! (project/resolve-project (project-dir)))}
+
+  clean {:doc "Delete a project's _site/ build output (bb clean <project>)"
+         :requires ([site.core :as core])
+         :task (core/clean! (project/resolve-project (project-dir)))}
+
+  serve {:doc "Build, then serve a project locally (bb serve <project> [port], default 3000)"
+         :requires ([site.core :as core])
+         :task (core/serve! (project/resolve-project (project-dir))
+                            (second *command-line-args*))}}}

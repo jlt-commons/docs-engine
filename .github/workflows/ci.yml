@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Scoped by ref, so a pull request build cannot supersede another pull
+# request's, and neither queues behind main.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install babashka
+        uses: DeLaGuardo/setup-clojure@13.6.1
+        with:
+          bb: latest
+
+      - name: Test
+        run: bb test
+
+      # The tests build sites from fixtures, which proves the renderer but
+      # not that the engine works against a real project laid out on disk.
+      # This builds one end to end and checks the properties that actually
+      # break in production: a base-pathed site whose URLs escaped to the
+      # organization root, and a homepage template that never rendered.
+      - name: Build a real project end to end
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)/demo-project"
+          mkdir -p "$root/docs/guide" "$root/docs/templates" "$root/docs/media"
+          printf '# Demo\n\nBody text.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n' \
+            > "$root/docs/guide/index.md"
+          printf '{:base-path "/demo-project" :title "Demo" :asset-dirs ["media"] :home-template "home.html"}\n' \
+            > "$root/docs/site.edn"
+          printf '{%% extends "base.html" %%}\n{%% block content %%}<img src="{{site-base}}/media/x.gif">{%% endblock %%}\n' \
+            > "$root/docs/templates/home.html"
+          printf 'GIF89a' > "$root/docs/media/x.gif"
+
+          bb build "$root"
+
+          out="$root/_site"
+          test -f "$out/index.html"          || { echo "no homepage generated"; exit 1; }
+          test -f "$out/guide/index.html"    || { echo "no guide page generated"; exit 1; }
+          test -f "$out/media/x.gif"         || { echo "asset dir was not copied"; exit 1; }
+          test -f "$out/css/screen.css"      || { echo "static assets missing"; exit 1; }
+          test ! -e "$out/.templates"        || { echo "staged templates leaked into the build"; exit 1; }
+
+          ! grep -q '{{site-base}}' "$out/index.html" \
+            || { echo "unrendered template variable in the homepage"; exit 1; }
+          grep -q 'src="/demo-project/media/x.gif"' "$out/index.html" \
+            || { echo "the project template did not render, or lost its base path"; exit 1; }
+          grep -q 'pre class="mermaid"' "$out/guide/index.html" \
+            || { echo "mermaid fence was not rewritten"; exit 1; }
+
+          # The failure this engine exists to prevent: an absolute URL that
+          # resolves against the organization site instead of the project.
+          if grep -ohE '(href|src)="/[^"]*"' "$out/index.html" "$out/guide/index.html" \
+               | grep -vE '="/demo-project/'; then
+            echo "the URLs above escape the base path and would hit the org site"
+            exit 1
+          fi
+          echo "end-to-end build is correct"

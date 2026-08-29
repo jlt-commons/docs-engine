@@ -1,0 +1,1035 @@
+/* ============================================================
+   jlt-commons site screen.css theme
+   Dark-by-default, code-forward theme with a light counterpart.
+   Written to be read and edited by maintainers, not shipped as
+   opaque minified CSS.
+
+   Theming: every color token below has three faces: the bare value
+   here (dark, the unconditional fallback), a light override under
+   `@media (prefers-color-scheme: light)`, and explicit
+   `[data-theme="light"|"dark"]` overrides that always win over the
+   media query. base.html's anti-flash script resolves and sets
+   `data-theme` before first paint. See print.css (a separate
+   stylesheet, loaded only when printing) for the one place that
+   forces light values regardless of `data-theme`.
+
+   Token system
+   ------------
+   Color:
+     --bg          #0d1117  Void      - chosen to match code blocks'
+                                         own background exactly, so
+                                         they blend into the page
+                                         instead of sitting in a
+                                         mismatched box.
+     --bg-raised   #131a24  Panel     - chrome surfaces: nav, sidebar,
+                                         TOC, footer.
+     --border      #25303d  Hairline  - dividers, card borders.
+     --text        #c9d1d9  Ink       - the page's own body-text color;
+                                         --code-comment and others are
+                                         chosen to read well against it.
+     --text-dim    #8b96a3  Ink, dim  - captions, secondary nav/UI.
+     --accent      #ff7a3d  Copper    - solder/wire: the material of
+                                         native FFI glue. Used for links,
+                                         selected states, inline code,
+                                         the brand parens. The one accent
+                                         hue on the page.
+     --accent-hover #ffa06b           - hover/brighter copper.
+
+   Code (13 --code-* tokens, one set per theme face above, see the
+   "Code highlighting" section further down this file for the full
+   list and the .hljs-* rules that consume them; code highlighting no
+   longer comes from a vendored per-theme stylesheet).
+
+   Type: one family (monospace) used for everything: code, prose,
+   chrome, the deliberate "code-forward" bet. Hierarchy comes from
+   size/weight/letter-spacing, not a second typeface:
+     - display role:  headings, brand: bold, tight tracking
+     - body role:     prose: regular weight, relaxed line-height
+     - utility role:  nav/sidebar/TOC/footer labels: small, uppercase,
+                       tracked out, dim ink
+   ============================================================ */
+
+:root {
+  --bg: #0d1117;
+  --bg-raised: #131a24;
+  --border: #25303d;
+  --text: #c9d1d9;
+  --text-dim: #8b96a3;
+  --accent: #ff7a3d;
+  --accent-hover: #ffa06b;
+
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Berkeley Mono",
+    "Cascadia Code", "Fira Code", Menlo, Consolas, "Liberation Mono",
+    monospace;
+
+  --radius: 8px;
+  --radius-sm: 4px;
+  --content-measure: 70ch;
+  --nav-height: 3.5rem;
+}
+
+/* ---- Light palette ----
+   Used when the reader has no stored preference and their OS/browser
+   prefers light (prefers-color-scheme), OR when they've explicitly
+   toggled to light. data-theme, when present, always wins over the
+   media query in either direction; see base.html's anti-flash
+   script, which always resolves and sets a concrete data-theme value
+   (never leaves it absent), so in practice the media-query-only layer
+   below only matters for a reader with JavaScript disabled. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #ffffff;
+    --bg-raised: #f6f8fa;
+    --border: #d0d7de;
+    --text: #1f2328;
+    --text-dim: #59636e;
+    --accent: #c8430c;
+    --accent-hover: #9e340a;
+    --code-keyword: #cf222e;
+    --code-title: #8250df;
+    --code-attr: #0550ae;
+    --code-string: #0a3069;
+    --code-builtin: #953800;
+    --code-comment: #6e7781;
+    --code-name: #116329;
+    --code-section: #0550ae;
+    --code-bullet: #953800;
+    --code-addition-bg: #dafbe1;
+    --code-addition-fg: #24292f;
+    --code-deletion-bg: #ffebe9;
+    --code-deletion-fg: #24292f;
+  }
+}
+
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --bg-raised: #f6f8fa;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text-dim: #59636e;
+  --accent: #c8430c;
+  --accent-hover: #9e340a;
+  --code-keyword: #cf222e;
+  --code-title: #8250df;
+  --code-attr: #0550ae;
+  --code-string: #0a3069;
+  --code-builtin: #953800;
+  --code-comment: #6e7781;
+  --code-name: #116329;
+  --code-section: #0550ae;
+  --code-bullet: #953800;
+  --code-addition-bg: #dafbe1;
+  --code-addition-fg: #24292f;
+  --code-deletion-bg: #ffebe9;
+  --code-deletion-fg: #24292f;
+}
+
+:root[data-theme="dark"] {
+  --bg: #0d1117;
+  --bg-raised: #131a24;
+  --border: #25303d;
+  --text: #c9d1d9;
+  --text-dim: #8b96a3;
+  --accent: #ff7a3d;
+  --accent-hover: #ffa06b;
+  --code-keyword: #ff7b72;
+  --code-title: #d2a8ff;
+  --code-attr: #79c0ff;
+  --code-string: #a5d6ff;
+  --code-builtin: #ffa657;
+  --code-comment: #8b949e;
+  --code-name: #7ee787;
+  --code-section: #1f6feb;
+  --code-bullet: #f2cc60;
+  --code-addition-bg: #033a16;
+  --code-addition-fg: #aff5b4;
+  --code-deletion-bg: #67060c;
+  --code-deletion-fg: #ffdcd7;
+}
+
+/* ---- Reset ---- */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+
+body,
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+li {
+  margin: 0;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Base typography ---- */
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+a {
+  color: inherit;
+}
+
+a:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+code {
+  font-family: var(--font-mono);
+}
+
+/* ---- Site nav ---- */
+
+.site-nav {
+  background: var(--bg-raised);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.site-nav .inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0.9rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  min-height: var(--nav-height);
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.brand::before {
+  content: "(";
+  color: var(--accent);
+}
+
+.brand::after {
+  content: ")";
+  color: var(--accent);
+}
+
+.brand:hover {
+  color: var(--accent);
+}
+
+.links {
+  list-style: none;
+  display: flex;
+  gap: 1.75rem;
+}
+
+.links a {
+  display: inline-block;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0.25rem 0;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.links a:hover {
+  color: var(--text);
+}
+
+.links .selected {
+  color: var(--accent);
+}
+
+.links .selected a {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+.theme-toggle {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  font-family: inherit;
+  transition: color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+}
+
+/* ---- Docs layout ---- */
+
+.docs-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  max-width: 1120px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.docs-sidebar {
+  min-width: 0; /* grid items default to min-width:auto; a long,
+                   unbreakable generated title would otherwise stretch
+                   this track (and the page) past the viewport width */
+  background: var(--bg-raised);
+  border-right: 1px solid var(--border);
+  padding: 2rem 1.25rem;
+  position: sticky;
+  top: var(--nav-height);
+  align-self: start;
+  max-height: calc(100vh - var(--nav-height));
+  overflow-y: auto;
+}
+
+.docs-sidebar h3 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 1rem;
+}
+
+/* Group headers within the sidebar; infra.html groups ~90 pages by
+   service directory; a plain h3-per-group would be too loud repeated
+   dozens of times, so this is smaller/dimmer and reads as a sub-label. */
+.docs-sidebar h4 {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  opacity: 0.7;
+  margin: 1rem 0 0.35rem;
+}
+
+.docs-sidebar ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.docs-sidebar a {
+  display: block;
+  margin-left: -0.6rem;
+  padding: 0.4rem 0.6rem;
+  border-left: 2px solid transparent;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere; /* titles are generated content; guard against
+                               any single unbroken token overflowing */
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.docs-sidebar a:hover {
+  color: var(--text);
+  background: rgba(201, 209, 217, 0.06);
+}
+
+.docs-sidebar li.selected {
+  background: rgba(232, 162, 89, 0.08);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.docs-sidebar li.selected a {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 600;
+}
+
+.docs-main {
+  min-width: 0; /* prevent a wide <pre> from blowing out the grid track */
+  padding: 2.5rem 2rem 4rem;
+}
+
+/* ---- Table of contents ----
+   Two elements carry class="toc" in the real markup: the outer
+   `<nav class="toc">` wrapper (docs.html) AND the inner
+   `<ul class="toc">` list itself (site.markdown's render-toc-html). A
+   bare `.toc` selector matches both, so the card chrome below is
+   scoped to `nav.toc` (the outer wrapper only), leaving the inner
+   list to `.toc ul` further down for its own flex/list-style rules. */
+
+nav.toc {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 2.5rem;
+  max-width: var(--content-measure);
+}
+
+.toc h2 {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 0.75rem;
+}
+
+.toc ul {
+  list-style: none;
+  padding-left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+/* h3 sub-sections nest one level deeper (see render-toc-html): indent
+   them instead of marking them, matching the reference site's TOC. */
+.toc ul ul {
+  padding-left: 1.25rem;
+  margin-top: 0.35rem;
+}
+
+.toc a {
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.toc a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* ---- Doc content ---- */
+
+.doc-content {
+  max-width: var(--content-measure);
+}
+
+.doc-content h1,
+.doc-content h2,
+.doc-content h3 {
+  scroll-margin-top: calc(var(--nav-height) + 1rem);
+  font-weight: 700;
+  color: var(--text);
+}
+
+.doc-content h1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  margin-bottom: 1.5rem;
+}
+
+.doc-content h2 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  margin: 2.75rem 0 1rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.doc-content h2:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.doc-content h3 {
+  font-size: 1.125rem;
+  margin: 2rem 0 0.75rem;
+  color: var(--accent);
+}
+
+.doc-content p {
+  margin-bottom: 1.25rem;
+}
+
+.doc-content a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(232, 162, 89, 0.4);
+  text-underline-offset: 2px;
+  transition: color 0.15s ease, text-decoration-color 0.15s ease;
+}
+
+.doc-content a:hover {
+  color: var(--accent-hover);
+  text-decoration-color: var(--accent-hover);
+}
+
+.doc-content ul,
+.doc-content ol {
+  margin-bottom: 1.25rem;
+  padding-left: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.doc-content li::marker {
+  color: var(--accent);
+}
+
+.doc-content strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.doc-content em {
+  font-style: italic;
+}
+
+.doc-content blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0 0 1.25rem;
+  padding: 0.25rem 0 0.25rem 1rem;
+  color: var(--text-dim);
+}
+
+.doc-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 2.5rem 0;
+}
+
+.doc-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.25rem;
+  font-size: 0.9375rem;
+  display: block;
+  overflow-x: auto;
+}
+
+.doc-content th,
+.doc-content td {
+  border: 1px solid var(--border);
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+}
+
+.doc-content th {
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+
+/* inline code, e.g. `src/site/core.clj` in prose */
+.doc-content code {
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  overflow-wrap: anywhere; /* long identifiers/paths in prose (not in a
+                               <pre>, which scrolls instead) */
+}
+
+/* ---- Code blocks ---- */
+
+pre {
+  margin: 1.75rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  overflow: hidden; /* clips highlight.js's square-cornered bg to ours */
+}
+
+/* Base display/overflow/font-size/line-height for code inside <pre>
+   (fenced code blocks). padding is deliberately NOT relied on here;
+   see .doc-content pre code below. */
+pre code {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+/* .doc-content code (specificity 0,1,1, meant for INLINE code in
+   prose) is more specific than pre code (0,0,2) above and would
+   otherwise win the shared `padding` property for fenced code blocks
+   too, since every fenced block sits inside .doc-content. This
+   restores block padding at matching specificity (0,1,2). Regression
+   from removing the vendored github-dark.min.css, which used to carry
+   this via `pre code.hljs` at the same effective specificity. */
+.doc-content pre code {
+  padding: 1em;
+}
+
+/* ---- Code highlighting (highlight.js classes, token-driven) ----
+   Mirrors the 14 color-bearing selector groups from the formerly-
+   vendored github-dark.min.css. .hljs-subst is omitted entirely: its
+   color-only rule already equals --text, no rule needed. .hljs-emphasis
+   and .hljs-strong get no --code-* color token for the same reason, but
+   keep their non-color font-style/font-weight rules below (the vendor
+   file carried those alongside the redundant color, and dropping them
+   would silently lose italic/bold styling on markdown emphasis/strong
+   spans inside code blocks). */
+
+.hljs-doctag,
+.hljs-keyword,
+.hljs-meta .hljs-keyword,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  color: var(--code-keyword);
+}
+
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  color: var(--code-title);
+}
+
+.hljs-attr,
+.hljs-attribute,
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id,
+.hljs-variable {
+  color: var(--code-attr);
+}
+
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-string {
+  color: var(--code-string);
+}
+
+.hljs-built_in,
+.hljs-symbol {
+  color: var(--code-builtin);
+}
+
+.hljs-code,
+.hljs-comment,
+.hljs-formula {
+  color: var(--code-comment);
+}
+
+.hljs-name,
+.hljs-quote,
+.hljs-selector-pseudo,
+.hljs-selector-tag {
+  color: var(--code-name);
+}
+
+.hljs-section {
+  color: var(--code-section);
+  font-weight: 700;
+}
+
+.hljs-bullet {
+  color: var(--code-bullet);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
+}
+
+.hljs-addition {
+  color: var(--code-addition-fg);
+  background-color: var(--code-addition-bg);
+}
+
+.hljs-deletion {
+  color: var(--code-deletion-fg);
+  background-color: var(--code-deletion-bg);
+}
+
+/* ---- Footer ---- */
+
+footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+  padding: 2rem 1.5rem;
+  text-align: center;
+}
+
+footer p {
+  color: var(--text-dim);
+  font-size: 0.8125rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---- 404 ---- */
+
+.not-found {
+  min-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 4rem 1.5rem;
+  gap: 1rem;
+}
+
+.not-found::before {
+  content: ";; page not found";
+  display: block;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+  letter-spacing: 0.05em;
+}
+
+.not-found h1 {
+  font-size: 5rem;
+  line-height: 1;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.not-found p {
+  color: var(--text-dim);
+  font-size: 1rem;
+}
+
+.not-found a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  transition: color 0.15s ease;
+}
+
+.not-found a:hover {
+  color: var(--accent-hover);
+}
+
+/* ---- Responsive: collapse the docs sidebar above the main column ---- */
+
+@media (max-width: 860px) {
+  .docs-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .docs-sidebar {
+    position: static;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+  }
+
+  /* Titles vary a lot in length ("MCP server (bb mcp)" vs. "The tree-sitter
+     C API: a tour (and how it's used in the real world)"); stay a plain
+     vertical block list (as on desktop) so long titles wrap within their
+     own line instead of growing wide as unbreakable flex/chip items and
+     forcing the page to scroll horizontally. */
+  .docs-main {
+    padding: 1.75rem 1.25rem 3rem;
+  }
+
+  .site-nav .inner {
+    padding: 0.75rem 1.25rem;
+  }
+
+  .not-found h1 {
+    font-size: 3.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .links {
+    gap: 1rem;
+  }
+
+  .links a {
+    font-size: 0.75rem;
+  }
+}
+
+/* ---- Homepage ---- */
+
+.hero {
+  padding: 5rem 1.5rem 4rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.hero-inner,
+section > .inner {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 6vw, 3.25rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+.tagline {
+  color: var(--text-dim);
+  font-size: 1.0625rem;
+  max-width: 60ch;
+  margin-bottom: 2rem;
+}
+
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  display: inline-block;
+  padding: 0.7rem 1.4rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+body.home section {
+  padding: 4rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+}
+
+body.home section h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1.25rem;
+}
+
+body.home section p {
+  margin-bottom: 1.25rem;
+  max-width: var(--content-measure);
+}
+
+body.home section a {
+  color: var(--accent);
+}
+
+section p code,
+.feat p code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  border-radius: var(--radius-sm);
+  padding: 0.15em 0.4em;
+  font-size: 0.875em;
+  overflow-wrap: anywhere;
+}
+
+.feature-grid {
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.feat {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+
+.feat h4 {
+  margin: 0 0 0.6rem;
+  font-size: 0.9375rem;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.feat p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 0.875rem;
+}
+
+@media (max-width: 860px) {
+  .hero {
+    padding: 3.5rem 1.25rem 3rem;
+  }
+
+  body.home section {
+    padding: 3rem 1.25rem;
+  }
+}
+
+/* ---- Collapsible reference sections -------------------------------------
+   Emitted by site.markdown/collapse-long-sections, which wraps every <h2>
+   section on a long reference page in a <details>. The <h2> keeps its own
+   id and sits inside the <summary>, so TOC anchors still resolve to it;
+   base.html's page script opens the containing <details> when an anchor
+   lands inside a closed one, and injects the expand/collapse-all control.
+
+   Only pages with enough long sections get this markup at all, so short
+   pages are unaffected and need no overrides here. */
+
+.doc-content details.doc-section > summary {
+  cursor: pointer;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  list-style: none; /* we draw our own marker below */
+}
+
+/* Safari/Chrome still paint the default disclosure triangle without this. */
+.doc-content details.doc-section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.doc-content details.doc-section > summary::before {
+  content: "\25B8"; /* ▸ */
+  color: var(--accent);
+  flex: none;
+  transition: transform 0.15s ease;
+}
+
+.doc-content details.doc-section[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+/* The <h2>'s own top border/padding already separates sections; inside a
+   summary it must not also push the marker out of alignment. */
+.doc-content details.doc-section > summary > h2 {
+  margin-bottom: 0;
+  border-top: none;
+  padding-top: 0;
+}
+
+.doc-content details.doc-section > summary:hover > h2 {
+  color: var(--accent);
+}
+
+.doc-content details.doc-section {
+  margin: 2.75rem 0 1rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--border);
+}
+
+.doc-content details.doc-section:first-child {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.doc-content .doc-section-body {
+  padding-bottom: 0.75rem;
+}
+
+/* Reduced-motion readers get the state change without the rotation. */
+@media (prefers-reduced-motion: reduce) {
+  .doc-content details.doc-section > summary::before {
+    transition: none;
+  }
+}
+
+/* ---- Expand/collapse-all control ----
+   Injected by base.html's script only when the page actually has
+   collapsible sections, so there is no empty toolbar on short pages. */
+
+.doc-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+}
+
+.doc-toolbar button {
+  font: inherit;
+  font-size: 0.8125rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.7rem;
+  cursor: pointer;
+}
+
+.doc-toolbar button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Printing must never hide content behind a closed <details>. */
+@media print {
+  .doc-content details.doc-section > summary::before { display: none; }
+  .doc-toolbar { display: none; }
+}

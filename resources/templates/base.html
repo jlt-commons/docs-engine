@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <script>
+    (function () {
+      var stored = null;
+      try { stored = localStorage.getItem("theme"); } catch (e) { /* storage blocked: fall through to OS preference */ }
+      var theme = (stored === "light" || stored === "dark")
+        ? stored
+        : (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+      document.documentElement.setAttribute("data-theme", theme);
+    })();
+  </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="{{site-tagline}}">
+  <title>{% block title %}{{site-title}}{% endblock %}</title>
+  <link rel="stylesheet" href="{{site-base}}/css/screen.css">
+  <link rel="stylesheet" href="{{site-base}}/css/print.css" media="print">
+  {% block head %}{% endblock %}
+</head>
+<body class="{% block body-class %}{% endblock %}">
+  <nav class="site-nav">
+    <div class="inner">
+      <a href="{{site-base}}/" class="brand">{{site-brand}}</a>
+      <ul class="links">
+        <li {% ifequal page "home" %}class="selected"{% endifequal %}><a href="{{site-base}}/">Home</a></li>
+        <li {% ifequal page "docs" %}class="selected"{% endifequal %}><a href="{{site-docs-href}}">Docs</a></li>
+        {% if site-github-url %}<li><a href="{{site-github-url}}" target="_blank" rel="noopener noreferrer">GitHub</a></li>{% endif %}
+        <li><button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light/dark theme">◐</button></li>
+      </ul>
+    </div>
+  </nav>
+
+  {% block content %}{% endblock %}
+
+  <footer>
+    <p>{{site-tagline}}</p>
+  </footer>
+
+  {# Mermaid is loaded on every page rather than only the ones that need it.
+     site.markdown rewrites ```mermaid fences into <pre class="mermaid">, and
+     the rewrite happens per page at render time, so the template has no
+     reliable signal for "this page has a diagram" without threading one
+     through every render path. The bundle is cached after the first page. #}
+  <script src="{{site-base}}/vendor/mermaid/mermaid.min.js"></script>
+  <script src="{{site-base}}/vendor/highlightjs/highlight.min.js"></script>
+  <script src="{{site-base}}/vendor/highlightjs/languages/clojure.min.js"></script>
+  <script src="{{site-base}}/vendor/highlightjs/languages/scheme.min.js"></script>
+  <script>
+    hljs.highlightAll();
+
+    // Theme is resolved in the <head> script above, so data-theme is already
+    // set by the time this runs and mermaid gets the palette the reader
+    // actually sees rather than the default light one.
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark"
+    });
+
+    function toggleTheme() {
+      var current = document.documentElement.getAttribute("data-theme");
+      var next = current === "light" ? "dark" : "light";
+      try { localStorage.setItem("theme", next); } catch (e) { /* storage blocked: theme just won't persist across reload */ }
+      location.reload();
+    }
+
+    // ---- Collapsible reference sections ----
+    // site.markdown/collapse-long-sections wraps the <h2> sections of a long
+    // reference page in a details.doc-section element. That breaks three
+    // things unless handled here: an anchor landing inside a closed section,
+    // in-page find (Ctrl-F cannot see closed content), and printing a single
+    // doc page (a closed <details> prints nothing). Pages with no collapsible
+    // sections exit immediately and are untouched.
+    (function () {
+      var sections = document.querySelectorAll("details.doc-section");
+      if (!sections.length) return;
+
+      function openContaining(hash) {
+        if (!hash || hash.length < 2) return;
+        var target;
+        try { target = document.querySelector(hash); } catch (e) { return; } // malformed hash
+        if (!target) return;
+        for (var el = target; el; el = el.parentElement) {
+          if (el.tagName === "DETAILS") el.open = true;
+        }
+        // The browser already tried to scroll before we opened the section,
+        // so it landed short. Re-scroll now that the target is visible;
+        // .doc-content h2's scroll-margin-top keeps it clear of the nav.
+        target.scrollIntoView();
+      }
+
+      openContaining(location.hash);
+      window.addEventListener("hashchange", function () { openContaining(location.hash); });
+
+      // Escape hatch for Ctrl-F, which cannot match inside a closed section.
+      var toggle = document.createElement("button");
+      toggle.type = "button";
+
+      function sync() {
+        var anyClosed = !!document.querySelector("details.doc-section:not([open])");
+        toggle.textContent = anyClosed ? "Expand all" : "Collapse all";
+        toggle.setAttribute("aria-expanded", anyClosed ? "false" : "true");
+      }
+
+      toggle.addEventListener("click", function () {
+        var open = !!document.querySelector("details.doc-section:not([open])");
+        sections.forEach(function (d) { d.open = open; });
+        sync();
+      });
+      sections.forEach(function (d) { d.addEventListener("toggle", sync); });
+      sync();
+
+      var bar = document.createElement("div");
+      bar.className = "doc-toolbar";
+      bar.appendChild(toggle);
+      var content = document.querySelector(".doc-content");
+      if (content) content.insertBefore(bar, content.firstChild);
+
+      // Printing (Ctrl-P) an ordinary doc page prints THIS DOM as it
+      // currently stands, so open every collapsed section first, then
+      // restore whatever the reader actually had open once printing is done.
+      var restore = [];
+      window.addEventListener("beforeprint", function () {
+        restore = [];
+        sections.forEach(function (d) { restore.push(d.open); d.open = true; });
+      });
+      window.addEventListener("afterprint", function () {
+        sections.forEach(function (d, i) { if (i < restore.length) d.open = restore[i]; });
+      });
+    })();
+  </script>
+  {% block page-scripts %}{% endblock %}
+</body>
+</html>

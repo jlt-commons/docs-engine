@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{title}} · {{site-title}}{% endblock %}
+{% block body-class %}docs{% endblock %}
+
+{% block content %}
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Guide</h3>
+    <ul>
+      {% for item in nav %}
+      <li {% ifequal item.href active-href %}class="selected"{% endifequal %}>
+        <a href="{{item.href}}">{{item.title}}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+  <main class="docs-main">
+    {% if toc %}
+    <nav class="toc">
+      <h2>Contents</h2>
+      {{toc|safe}}
+    </nav>
+    {% endif %}
+    <div class="doc-content">
+      {{content|safe}}
+    </div>
+  </main>
+</div>
+{% endblock %}

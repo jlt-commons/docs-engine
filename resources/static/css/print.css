@@ -1,0 +1,66 @@
+/* ============================================================
+   jlt-commons site print.css
+   Loaded only when printing (media="print" on its <link> in
+   base.html); never affects on-screen rendering. Forces the light
+   palette regardless of the reader's chosen screen theme (nobody
+   wants to print a black background), strips chrome that means
+   nothing on paper, and keeps code blocks/tables/headings from
+   splitting awkwardly across a page break.
+
+   The :root selector below is repeated 3 ways (bare, [data-theme=
+   "light"], [data-theme="dark"]) to match/exceed the specificity of
+   every selector screen.css might have set --bg/--text/etc. through.
+   A plain `:root { ... }` here would lose to screen.css's
+   :root[data-theme="dark"] on specificity even though this
+   stylesheet loads later.
+   ============================================================ */
+
+:root,
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  --bg: #ffffff;
+  --bg-raised: #f6f8fa;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --text-dim: #59636e;
+  --accent: #c8430c;
+  --accent-hover: #9e340a;
+  --code-keyword: #cf222e;
+  --code-title: #8250df;
+  --code-attr: #0550ae;
+  --code-string: #0a3069;
+  --code-builtin: #953800;
+  --code-comment: #6e7781;
+  --code-name: #116329;
+  --code-section: #0550ae;
+  --code-bullet: #953800;
+  --code-addition-bg: #dafbe1;
+  --code-addition-fg: #24292f;
+  --code-deletion-bg: #ffebe9;
+  --code-deletion-fg: #24292f;
+}
+
+.site-nav,
+.docs-sidebar,
+nav.toc,
+.theme-toggle,
+.print-trigger,
+footer {
+  display: none !important;
+}
+
+.docs-layout {
+  display: block;
+}
+
+pre,
+.doc-content table,
+.doc-content img {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  break-after: avoid;
+  page-break-after: avoid;
+}

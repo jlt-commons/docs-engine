@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{site-title}}{% endblock %}
+{% block body-class %}home{% endblock %}
+{% block content %}
+<section>
+  <div class="inner">
+    {% if toc %}
+    <nav class="toc">
+      <h2>Contents</h2>
+      {{toc|safe}}
+    </nav>
+    {% endif %}
+    <div class="doc-content">
+      {{content|safe}}
+    </div>
+  </div>
+</section>
+{% endblock %}
