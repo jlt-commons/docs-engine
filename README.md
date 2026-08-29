@@ -71,17 +71,21 @@ publish it.
 ```bash
 bb test                      # the test suite
 bb build ../your-project     # generate ../your-project/_site/
-bb serve ../your-project     # build, then serve at http://localhost:3000
+bb serve ../your-project     # build, then serve, honouring :base-path
 bb serve ../your-project 4000
 bb clean ../your-project     # delete the build output
 ```
 
 `_site/` is generated. Add it to the project's `.gitignore`.
 
-One caveat on `bb serve`: it serves the build at the server's root, so a site
-with a `:base-path` will 404 its own assets locally while working perfectly once
-deployed. To check a base-pathed site properly, copy the build into a directory
-named after the base path and serve its parent.
+`bb serve` mounts the build at the project's configured `:base-path`, so the
+local URL matches the deployed one. A project with `:base-path "/your-project"`
+previews at `http://localhost:3000/your-project/`, and the server prints that
+full URL when it starts. A root-hosted project is served at `/` as before.
+
+That matters because the base path is baked into every generated URL. Serving
+the build at the server's root instead would render the homepage unstyled with
+every link dead, which is a confusing way to discover that your site is fine.
 
 ## Homepages
 
