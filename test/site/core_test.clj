@@ -68,12 +68,12 @@
        (fs/create-dirs (io/file docs "media"))
        (spit (io/file docs "media" "x.gif") "GIF89a"))
      (let [site (cond-> {:title "jlt-commons" :description "d" :github-url "https://example.invalid"
-                 :base-path base
-                 :guide-dir guide
-                 :templates-dir templates
-                 :output-dir (io/file (str tmp) "_site")
-                 :home-template (when home-template? "home.html")
-                 :asset-dirs (when assets? [(io/file docs "media")])}
+                         :base-path base
+                         :guide-dir guide
+                         :templates-dir templates
+                         :output-dir (io/file (str tmp) "_site")
+                         :home-template (when home-template? "home.html")
+                         :asset-dirs (when assets? [(io/file docs "media")])}
                   (some? mermaid-override) (assoc :mermaid mermaid-override))]
        (core/generate! site)
        {:out   (:output-dir site)
@@ -97,6 +97,25 @@
       (is (str/includes? doc "href=\"/some-lib/\"")))
     (testing "the home page gets the same treatment"
       (is (str/includes? home "href=\"/some-lib/css/screen.css\"")))))
+
+(deftest static-handler-serves-under-the-configured-base-path
+  ;; serve! reuses generate!'s output, but generate! bakes /x into every
+  ;; URL while the handler used to know nothing about it: the homepage
+  ;; loaded at /, and everything it linked to 404'd under the prefix.
+  (let [{:keys [out]} (build-fixture-site! "/x")
+        handler       (core/make-static-handler out "/x")]
+    (testing "a request for the base path plus a file resolves against output-dir"
+      (is (= 200 (:status (handler {:uri "/x/index.html"})))))
+    (testing "a request for the bare base path serves the homepage"
+      (is (= 200 (:status (handler {:uri "/x/"})))))
+    (testing "the same path without the prefix is not found"
+      (is (= 404 (:status (handler {:uri "/index.html"})))))))
+
+(deftest static-handler-is-unaffected-when-root-hosted
+  (let [{:keys [out]} (build-fixture-site! "")
+        handler       (core/make-static-handler out "")]
+    (is (= 200 (:status (handler {:uri "/index.html"}))))
+    (is (= 200 (:status (handler {:uri "/"}))))))
 
 (deftest selected-nav-item-still-matches-after-prefixing
   ;; write-doc-page! computes active-href separately from nav-items. If the two

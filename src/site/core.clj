@@ -317,28 +317,53 @@
 (defn- not-found-response [output-dir]
   {:status 404 :headers {"Content-Type" "text/html"} :body (slurp (io/file output-dir "404.html"))})
 
-(defn- make-static-handler [output-dir]
+(defn- strip-base-path
+  "Removes a normalized base (\"\" or \"/name\", see `base-path`) from the
+   front of a request uri. Returns the base-relative uri, always leading
+   with \"/\", or nil when uri is not under base at all.
+
+   A root-hosted site (base \"\") is returned unchanged. Otherwise uri
+   must be exactly base, or base followed by \"/\", so a base of
+   \"/mcp-tkx\" does not also swallow a sibling like \"/mcp-tkx-other\"."
+  [uri base]
+  (cond
+    (empty? base) uri
+    (= uri base) "/"
+    (str/starts-with? uri (str base "/")) (subs uri (count base))
+    :else nil))
+
+(defn- make-static-handler
+  "Serves output-dir's files under base (\"\" or \"/name\", see
+   `base-path`), mirroring the prefix generate! already baked into every
+   emitted URL. Without this, local preview and the deployed site
+   disagree: generate! links to /name/..., but a handler rooted straight
+   at output-dir only ever answers at /..., so the homepage loads at /,
+   unstyled, with every link it points at 404ing under the prefix."
+  [output-dir base]
   (fn [req]
-    (let [uri (:uri req)
-          uri (if (= uri "/") "/index.html" uri)
-          f   (io/file output-dir (subs uri 1))]
-      (if (and (fs/exists? f)
-               (within-output-dir? output-dir f)
-               (not (fs/directory? f)))
-        ;; io/input-stream, not slurp: slurp reads as a String, which
-        ;; would corrupt a binary asset (images, fonts) via charset
-        ;; decode/re-encode.
-        {:status 200 :headers {"Content-Type" (content-type uri)} :body (io/input-stream f)}
-        (not-found-response output-dir)))))
+    (if-let [rel (strip-base-path (:uri req) base)]
+      (let [rel (if (= rel "/") "/index.html" rel)
+            f   (io/file output-dir (subs rel 1))]
+        (if (and (fs/exists? f)
+                 (within-output-dir? output-dir f)
+                 (not (fs/directory? f)))
+          ;; io/input-stream, not slurp: slurp reads as a String, which
+          ;; would corrupt a binary asset (images, fonts) via charset
+          ;; decode/re-encode.
+          {:status 200 :headers {"Content-Type" (content-type rel)} :body (io/input-stream f)}
+          (not-found-response output-dir)))
+      (not-found-response output-dir))))
 
 (defn serve!
-  "Builds, then serves output-dir at http://localhost:<port> until interrupted."
+  "Builds, then serves output-dir at http://localhost:<port><base-path>
+   until interrupted."
   [project port-str]
   (generate! project)
   (let [port       (Integer/parseInt (or port-str "3000"))
-        output-dir (:output-dir project)]
-    (println (str "Serving " output-dir " at http://localhost:" port))
+        output-dir (:output-dir project)
+        base       (base-path (:base-path project))]
+    (println (str "Serving " output-dir " at http://localhost:" port base "/"))
     ;; :ip "127.0.0.1" — local-only dev preview server; without an
     ;; explicit :ip, http-kit binds all network interfaces by default.
-    (hk/run-server (make-static-handler output-dir) {:port port :ip "127.0.0.1"})
+    (hk/run-server (make-static-handler output-dir base) {:port port :ip "127.0.0.1"})
     @(promise)))
