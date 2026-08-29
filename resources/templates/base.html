@@ -38,18 +38,17 @@
     <p>{{site-tagline}}</p>
   </footer>
 
-  {# Mermaid is loaded on every page rather than only the ones that need it.
-     site.markdown rewrites ```mermaid fences into <pre class="mermaid">, and
-     the rewrite happens per page at render time, so the template has no
-     reliable signal for "this page has a diagram" without threading one
-     through every render path. The bundle is cached after the first page. #}
-  <script src="{{site-base}}/vendor/mermaid/mermaid.min.js"></script>
+  {# Only on pages that actually have a diagram. The bundle is 3.4 MB,
+     around 450x a typical rendered page, so a site with no diagrams should
+     not pay for it. site.core/mermaid-needed? decides, per page. #}
+  {% if mermaid %}<script src="{{site-base}}/vendor/mermaid/mermaid.min.js"></script>{% endif %}
   <script src="{{site-base}}/vendor/highlightjs/highlight.min.js"></script>
   <script src="{{site-base}}/vendor/highlightjs/languages/clojure.min.js"></script>
   <script src="{{site-base}}/vendor/highlightjs/languages/scheme.min.js"></script>
   <script>
     hljs.highlightAll();
 
+    {% if mermaid %}
     // Theme is resolved in the <head> script above, so data-theme is already
     // set by the time this runs and mermaid gets the palette the reader
     // actually sees rather than the default light one.
@@ -57,6 +56,7 @@
       startOnLoad: true,
       theme: document.documentElement.getAttribute("data-theme") === "light" ? "default" : "dark"
     });
+    {% endif %}
 
     function toggleTheme() {
       var current = document.documentElement.getAttribute("data-theme");

@@ -110,6 +110,30 @@
                      (map (fn [base] (if (= dir "") base (str dir "/" base))) bases)))
                  (sort (keys by-dir))))))
 
+(def ^:private mermaid-marker
+  "What site.markdown/mermaidify emits, and what a project writes by hand
+   in its own template when it wants a diagram outside a markdown fence."
+  "class=\"mermaid\"")
+
+(defn mermaid-needed?
+  "Whether a page should load the mermaid bundle.
+
+   The bundle is 3.4 MB, around 450x a typical rendered page here, so a
+   site with no diagrams should not pay for it on every page. Detection is
+   per page rather than per site: a project usually has diagrams on a few
+   guide pages and none on the rest.
+
+   `sources` are whatever text feeds the page — rendered HTML for a doc
+   page, the template's own source for a bespoke homepage, since that
+   template's markup is not available any other way before it renders.
+   A site can override the detection entirely with :mermaid in site.edn,
+   which is the escape hatch for a diagram arriving through an include
+   the detector cannot see."
+  [site & sources]
+  (if (contains? site :mermaid)
+    (boolean (:mermaid site))
+    (boolean (some (fn [t] (and t (str/includes? t mermaid-marker))) sources))))
+
 (defn render-all-docs
   "doc-id -> {:title :toc-html :body-html :slug}, for every doc-id.
    Always renders via md/rewrite-nested-doc-links (built per doc-id,
@@ -124,7 +148,8 @@
                 {:keys [title toc-html body-html]}
                 (md/render-doc-page raw (md/rewrite-nested-doc-links doc-id))]
             [doc-id {:title title :toc-html toc-html :body-html body-html
-                     :slug (slug-of doc-id)}]))))
+                     :slug (slug-of doc-id)
+                     :mermaid (str/includes? body-html mermaid-marker)}]))))
 
 (defn nav-items [rendered doc-ids base]
   (mapv (fn [doc-id]
@@ -157,7 +182,7 @@
      :site-base       base
      :site-docs-href  (docs-href site base)}))
 
-(defn write-doc-page! [output-dir site-ctx page nav base]
+(defn write-doc-page! [site output-dir site-ctx page nav base]
   (let [out-path (io/file output-dir "guide" (str (:slug page) ".html"))
         href     (str base "/guide/" (:slug page) ".html")]
     (io/make-parents out-path)
@@ -165,6 +190,7 @@
           (selmer/render-file "docs.html"
                               (merge site-ctx
                                      {:page "docs"
+                                      :mermaid (mermaid-needed? site (:body-html page))
                                       :title (:title page)
                                       :toc (:toc-html page)
                                       :content (:body-html page)
@@ -178,22 +204,39 @@
         nav      (nav-items rendered doc-ids base)
         site-ctx (site-context site)]
     (doseq [doc-id doc-ids]
-      (write-doc-page! output-dir site-ctx (get rendered doc-id) nav base))))
+      (write-doc-page! site output-dir site-ctx (get rendered doc-id) nav base))))
 
 (defn generate-home!
   "The project's own :home-template when it declares one, else the generic
    homepage rendered from its guide index or README."
-  [{:keys [output-dir home-template] :as site}]
+  [{:keys [output-dir home-template templates-dir] :as site}]
   (let [out-path (io/file output-dir "index.html")
         site-ctx (site-context site)]
     (io/make-parents out-path)
     (spit out-path
           (if home-template
-            ;; Relative to the project's templates dir, which staging
-            ;; flattened onto the resource path root, so the configured
-            ;; string is already the name to render.
-            (selmer/render-file home-template (merge site-ctx {:page "home"}))
-            (generic-home/render site site-ctx)))))
+            ;; A bespoke homepage's markup does not exist until it renders,
+            ;; and the script tag it might need is emitted by the same pass.
+            ;; So the detector reads the template's own source instead. A
+            ;; diagram arriving through an include this cannot see is what
+            ;; :mermaid in site.edn is for.
+            (let [src (io/file templates-dir home-template)]
+              ;; Relative to the project's templates dir, which staging
+              ;; flattened onto the resource path root, so the configured
+              ;; string is already the name to render.
+              (selmer/render-file home-template
+                                  (merge site-ctx
+                                         {:page "home"
+                                          :mermaid (mermaid-needed?
+                                                    site
+                                                    (when (fs/exists? src) (slurp src)))})))
+            (let [html (generic-home/render site site-ctx)]
+              ;; The generic homepage renders markdown, so its own output is
+              ;; the honest source. Re-render only when a diagram turned up,
+              ;; which is rare and costs one extra pass on one page.
+              (if (mermaid-needed? site html)
+                (generic-home/render site (assoc site-ctx :mermaid true))
+                html))))))
 
 (defn generate-404! [output-dir site-ctx]
   (let [out-path (io/file output-dir "404.html")]

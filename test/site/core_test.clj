@@ -47,13 +47,17 @@
    {:out :doc :home :site}. opts: :base, :home-template? (ship a project
    homepage template), :assets? (ship an asset directory)."
   ([base] (build-fixture-site! base {}))
-  ([base {:keys [home-template? assets?]}]
+  ([base {:keys [home-template? assets? diagram? mermaid-override]}]
    (let [tmp       (fs/create-temp-dir {:prefix "jltc-site"})
          docs      (io/file (str tmp) "docs")
          guide     (io/file docs "guide")
          templates (io/file docs "templates")]
      (fs/create-dirs guide)
-     (spit (io/file guide "index.md") "# Intro\n\nHello.\n")
+     (spit (io/file guide "index.md")
+           (if diagram?
+             "# Intro\n\nHello.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
+             "# Intro\n\nHello.\n"))
+     (spit (io/file guide "plain.md") "# Plain\n\nNo diagram here.\n")
      (when home-template?
        (fs/create-dirs templates)
        (spit (io/file templates "home.html")
@@ -63,18 +67,20 @@
      (when assets?
        (fs/create-dirs (io/file docs "media"))
        (spit (io/file docs "media" "x.gif") "GIF89a"))
-     (let [site {:title "jlt-commons" :description "d" :github-url "https://example.invalid"
+     (let [site (cond-> {:title "jlt-commons" :description "d" :github-url "https://example.invalid"
                  :base-path base
                  :guide-dir guide
                  :templates-dir templates
                  :output-dir (io/file (str tmp) "_site")
                  :home-template (when home-template? "home.html")
-                 :asset-dirs (when assets? [(io/file docs "media")])}]
+                 :asset-dirs (when assets? [(io/file docs "media")])}
+                  (some? mermaid-override) (assoc :mermaid mermaid-override))]
        (core/generate! site)
-       {:out  (:output-dir site)
-        :site site
-        :doc  (slurp (io/file (:output-dir site) "guide" "index.html"))
-        :home (slurp (io/file (:output-dir site) "index.html"))}))))
+       {:out   (:output-dir site)
+        :site  site
+        :doc   (slurp (io/file (:output-dir site) "guide" "index.html"))
+        :plain (slurp (io/file (:output-dir site) "guide" "plain.html"))
+        :home  (slurp (io/file (:output-dir site) "index.html"))}))))
 
 (deftest root-hosted-build-uses-root-relative-asset-urls
   (let [{:keys [doc]} (build-fixture-site! "")]
@@ -144,10 +150,62 @@
       (is (str/includes? out "not-there"))
       (is (fs/exists? (io/file (:output-dir site) "index.html"))))))
 
-(deftest mermaid-is-vendored-and-loaded
-  ;; The renderer rewrites ```mermaid fences into <pre class="mermaid">
-  ;; whether or not the bundle is present, so a missing bundle shows up as
-  ;; a diagram rendered as unstyled source text rather than as an error.
-  (let [{:keys [out doc]} (build-fixture-site! "/some-lib")]
-    (is (fs/exists? (io/file out "vendor" "mermaid" "mermaid.min.js")))
-    (is (str/includes? doc "/some-lib/vendor/mermaid/mermaid.min.js"))))
+(deftest mermaid-is-vendored-and-loaded-only-where-a-diagram-exists
+  ;; The bundle is 3.4 MB, around 450x a rendered page, so loading it on a
+  ;; site with no diagrams is the regression this guards. The renderer
+  ;; rewrites fences whether or not the bundle is present, so getting this
+  ;; wrong in the other direction shows up as a diagram rendered as
+  ;; unstyled source text rather than as an error.
+  (let [{:keys [out doc plain]} (build-fixture-site! "/some-lib" {:diagram? true})]
+    (testing "the bundle ships regardless, since some page may need it"
+      (is (fs/exists? (io/file out "vendor" "mermaid" "mermaid.min.js"))))
+    (testing "the page with a diagram loads it"
+      (is (str/includes? doc "<pre class=\"mermaid\">"))
+      (is (str/includes? doc "/some-lib/vendor/mermaid/mermaid.min.js"))
+      (is (str/includes? doc "mermaid.initialize")))
+    (testing "a page without one does not"
+      (is (not (str/includes? plain "mermaid.min.js")))
+      (is (not (str/includes? plain "mermaid.initialize"))))))
+
+(deftest a-site-with-no-diagrams-anywhere-never-loads-mermaid
+  (let [{:keys [doc plain home]} (build-fixture-site! "/some-lib")]
+    (doseq [[label page] [["guide index" doc] ["plain page" plain] ["homepage" home]]]
+      (is (not (str/includes? page "mermaid.min.js")) (str label " should not load mermaid")))))
+
+(deftest a-bespoke-homepage-with-a-hand-written-diagram-loads-mermaid
+  ;; A bespoke template's markup does not exist until it renders, and the
+  ;; script tag is emitted by that same pass, so detection reads the
+  ;; template's source instead. This is the case that would silently break.
+  (let [tmp   (fs/create-temp-dir {:prefix "jltc-site"})
+        docs  (io/file (str tmp) "docs")
+        guide (io/file docs "guide")
+        tpl   (io/file docs "templates")]
+    (fs/create-dirs guide) (fs/create-dirs tpl)
+    (spit (io/file guide "index.md") "# Intro\n")
+    (spit (io/file tpl "home.html")
+          "{% extends \"base.html\" %}\n{% block content %}<pre class=\"mermaid\">flowchart LR\n a-->b</pre>{% endblock %}\n")
+    (let [site {:title "t" :description "d" :base-path "" :guide-dir guide
+                :templates-dir tpl :home-template "home.html"
+                :output-dir (io/file (str tmp) "_site")}]
+      (core/generate! site)
+      (let [home (slurp (io/file (:output-dir site) "index.html"))]
+        (is (str/includes? home "mermaid.min.js"))
+        (is (str/includes? home "mermaid.initialize"))))))
+
+(deftest the-site-can-override-the-detection-in-both-directions
+  ;; The escape hatch for a diagram arriving through an include the
+  ;; detector cannot see, and for turning it off deliberately.
+  (testing ":mermaid true forces it on where nothing was detected"
+    (let [{:keys [plain]} (build-fixture-site! "" {:mermaid-override true})]
+      (is (str/includes? plain "mermaid.min.js"))))
+  (testing ":mermaid false forces it off even with a diagram present"
+    (let [{:keys [doc]} (build-fixture-site! "" {:diagram? true :mermaid-override false})]
+      (is (str/includes? doc "<pre class=\"mermaid\">"))
+      (is (not (str/includes? doc "mermaid.min.js"))))))
+
+(deftest mermaid-needed?-reads-the-site-override-before-the-sources
+  (is (true?  (core/mermaid-needed? {} "<pre class=\"mermaid\">x</pre>")))
+  (is (false? (core/mermaid-needed? {} "no diagram here")))
+  (is (false? (core/mermaid-needed? {} nil)))
+  (is (true?  (core/mermaid-needed? {:mermaid true} "no diagram here")))
+  (is (false? (core/mermaid-needed? {:mermaid false} "<pre class=\"mermaid\">x</pre>"))))

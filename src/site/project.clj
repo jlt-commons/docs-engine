@@ -104,22 +104,26 @@
         cfg         (read-config docs-dir)
         name        (str (fs/file-name (fs/absolutize project-dir)))
         title       (or (:title cfg) (default-title project-dir))]
-    {:name          name
-     :project-dir   project-dir
-     :docs-dir      docs-dir
-     :guide-dir     (io/file docs-dir "guide")
-     :readme-file   (io/file project-dir "README.md")
-     :output-dir    (io/file project-dir "_site")
-     :title         title
-     :description   (or (:description cfg) title)
-     :github-url    (or (:github-url cfg) (default-github-url project-dir))
-     ;; "" for a site served at a domain root, "/repo" for a project site
-     ;; under an organization's Pages root. See site.core/base-path.
-     :base-path     (or (:base-path cfg) "")
-     :templates-dir (io/file docs-dir (or (:templates-dir cfg) "templates"))
-     ;; nil means the generic homepage, rendered from the project's own
-     ;; guide index or README. A project only writes a template when it
-     ;; wants something the generic page cannot express.
-     :home-template (:home-template cfg)
-     :asset-dirs    (mapv (fn [d] (io/file docs-dir (validate-asset-dir! d name)))
-                          (:asset-dirs cfg))}))
+    (merge
+     {:name          name
+      :project-dir   project-dir
+      :docs-dir      docs-dir
+      :guide-dir     (io/file docs-dir "guide")
+      :readme-file   (io/file project-dir "README.md")
+      :output-dir    (io/file project-dir "_site")
+      :title         title
+      :description   (or (:description cfg) title)
+      :github-url    (or (:github-url cfg) (default-github-url project-dir))
+      ;; "" for a site served at a domain root, "/repo" for a project site
+      ;; under an organization's Pages root. See site.core/base-path.
+      :base-path     (or (:base-path cfg) "")
+      :templates-dir (io/file docs-dir (or (:templates-dir cfg) "templates"))
+      ;; nil means the generic homepage, rendered from the project's own
+      ;; guide index or README. A project only writes a template when it
+      ;; wants something the generic page cannot express.
+      :home-template (:home-template cfg)
+      :asset-dirs    (mapv (fn [d] (io/file docs-dir (validate-asset-dir! d name)))
+                           (:asset-dirs cfg))}
+     ;; Only when the site said something. Absent means auto-detect per page,
+     ;; which is right almost always; see site.core/mermaid-needed?.
+     (when (contains? cfg :mermaid) {:mermaid (:mermaid cfg)}))))
