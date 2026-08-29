@@ -111,6 +111,24 @@
     (testing "the same path without the prefix is not found"
       (is (= 404 (:status (handler {:uri "/index.html"})))))))
 
+(deftest static-handler-does-not-swallow-a-sibling-of-the-base-path
+  ;; strip-base-path requires uri to be exactly base, or base followed by
+  ;; "/". Drop the "/" from that guard and a bare prefix match takes over.
+  ;;
+  ;; The input matters. Most near-misses are masked by the (subs rel 1)
+  ;; on the next line, which assumes a leading slash: "/x-other" would
+  ;; strip to "-other", then lose its first character, and 404 anyway.
+  ;; "/x_index.html" is the shape that actually leaks: it strips to
+  ;; "_index.html", the subs drops the underscore, and the handler serves
+  ;; the real homepage at a uri that is not under the base path at all.
+  (let [{:keys [out]} (build-fixture-site! "/x")
+        handler       (core/make-static-handler out "/x")]
+    (testing "the base path itself and paths under it resolve"
+      (is (= 200 (:status (handler {:uri "/x"}))))
+      (is (= 200 (:status (handler {:uri "/x/index.html"})))))
+    (testing "a uri merely sharing the base as a string prefix does not"
+      (is (= 404 (:status (handler {:uri "/x_index.html"})))))))
+
 (deftest static-handler-is-unaffected-when-root-hosted
   (let [{:keys [out]} (build-fixture-site! "")
         handler       (core/make-static-handler out "")]
