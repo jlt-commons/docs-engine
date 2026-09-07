@@ -68,12 +68,12 @@
        (fs/create-dirs (io/file docs "media"))
        (spit (io/file docs "media" "x.gif") "GIF89a"))
      (let [site (cond-> {:title "jlt-commons" :description "d" :github-url "https://example.invalid"
-                 :base-path base
-                 :guide-dir guide
-                 :templates-dir templates
-                 :output-dir (io/file (str tmp) "_site")
-                 :home-template (when home-template? "home.html")
-                 :asset-dirs (when assets? [(io/file docs "media")])}
+                         :base-path base
+                         :guide-dir guide
+                         :templates-dir templates
+                         :output-dir (io/file (str tmp) "_site")
+                         :home-template (when home-template? "home.html")
+                         :asset-dirs (when assets? [(io/file docs "media")])}
                   (some? mermaid-override) (assoc :mermaid mermaid-override))]
        (core/generate! site)
        {:out   (:output-dir site)
@@ -209,3 +209,38 @@
   (is (false? (core/mermaid-needed? {} nil)))
   (is (true?  (core/mermaid-needed? {:mermaid true} "no diagram here")))
   (is (false? (core/mermaid-needed? {:mermaid false} "<pre class=\"mermaid\">x</pre>"))))
+
+;; A project that has never written its own Contributing page still gets
+;; the engine's default one, so nothing about "how to engage with this
+;; project" needs copying into every project that uses this engine.
+
+(deftest a-project-with-no-contributing-page-gets-the-engine-default
+  (let [{:keys [out]} (build-fixture-site! "/some-lib")
+        contributing  (slurp (io/file out "guide" "contributing.html"))]
+    (is (str/includes? contributing "Etiquette"))
+    (is (str/includes? contributing "docs-engine"))))
+
+(deftest the-default-contributing-page-is-in-nav-right-after-index
+  ;; index.md is pinned first; among what is left, "contributing.md" sorts
+  ;; alphabetically ahead of "plain.md", so this is also a sort-order check,
+  ;; not just a presence check.
+  (let [{:keys [doc]} (build-fixture-site! "/some-lib")]
+    (is (str/includes? doc "href=\"/some-lib/guide/contributing.html\""))
+    (let [index-at   (str/index-of doc "/guide/index.html")
+          contrib-at (str/index-of doc "/guide/contributing.html")
+          plain-at   (str/index-of doc "/guide/plain.html")]
+      (is (< index-at contrib-at plain-at)))))
+
+(deftest a-project-with-its-own-contributing-page-overrides-the-default
+  (let [tmp   (fs/create-temp-dir {:prefix "jltc-site"})
+        docs  (io/file (str tmp) "docs")
+        guide (io/file docs "guide")]
+    (fs/create-dirs guide)
+    (spit (io/file guide "index.md") "# Intro\n")
+    (spit (io/file guide "contributing.md") "# Contributing\n\nOur own house rules.\n")
+    (let [site {:title "t" :description "d" :base-path "" :guide-dir guide
+                :output-dir (io/file (str tmp) "_site")}]
+      (core/generate! site)
+      (let [contributing (slurp (io/file (:output-dir site) "guide" "contributing.html"))]
+        (is (str/includes? contributing "Our own house rules."))
+        (is (not (str/includes? contributing "Etiquette")))))))
