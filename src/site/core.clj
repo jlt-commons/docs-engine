@@ -75,27 +75,47 @@
       (into ["index.md"] (remove #{"index.md"} sorted))
       (vec sorted))))
 
+(def ^:private default-root-doc-basenames
+  "Basenames the engine supplies for the guide's root directory even when
+   the project has not written one itself — the same relationship
+   base.html and 404.html already have to a project (shared chrome, not
+   project content), applied to a page instead of a template. A
+   project's own file of the same name always wins; see doc-source. Only
+   the root directory gets defaults, not a nested docs/guide/ subtree.
+
+   Currently just \"contributing.md\": every jlt-commons project's site
+   gets a Contributing page without copying its content into every
+   project, and a project with something project-specific to add writes
+   docs/guide/contributing.md like any other page, which replaces this
+   one entirely."
+  #{"contributing.md"})
+
 (defn discover-doc-ids
   "Auto-discovered nav order: every *.md anywhere under guide-dir (any
-   depth), as POSIX-style paths relative to guide-dir. Ordered
-   directory-by-directory so it reads top-to-bottom like the guide's
-   intended sequence: directories
+   depth), as POSIX-style paths relative to guide-dir, PLUS the engine's
+   own default-root-doc-basenames for any of those the project has not
+   written itself. Ordered directory-by-directory so it reads top-to-
+   bottom like the guide's intended sequence: directories
    themselves in sorted order (guide-dir's own root first, since '' sorts
    before any name), each directory's own files pinning ITS index.md
    first if present, else sorted. Used when a project has no
    projects/<name>/docpages.edn curated-order override.
 
+   A doc-id this returns does not always name a file guide-dir actually
+   has — see doc-source, which resolves each one to either the project's
+   own file or the engine's bundled default.
+
    For a flat guide-dir (the shape every project had before one
    introduced nested subdirectories under docs/guide/) this reduces to
-   exactly the previous flat behavior: one directory group (the root),
-   its files sorted with index.md pinned first. Plain alphabetical sort
-   on full relative paths would get a nested project's per-directory
-   index.md wrong when numbered siblings start above 01 (verified
-   against a sample nested project's section-three/, whose files are
-   index.md, 02-getting-started.md, 03-closing.md — alphabetical-on-full-
-   path would order index.md LAST, after 02/03, since digits sort below
-   the letter 'i'); grouping by directory and pinning per-group avoids
-   that."
+   exactly the previous flat behavior plus the defaults: one directory
+   group (the root), its files sorted with index.md pinned first. Plain
+   alphabetical sort on full relative paths would get a nested project's
+   per-directory index.md wrong when numbered siblings start above 01
+   (verified against a sample nested project's section-three/, whose
+   files are index.md, 02-getting-started.md, 03-closing.md —
+   alphabetical-on-full-path would order index.md LAST, after 02/03,
+   since digits sort below the letter 'i'); grouping by directory and
+   pinning per-group avoids that."
   [guide-dir]
   (let [root    (.toPath (io/file guide-dir))
         all-rel (->> (file-seq (io/file guide-dir))
@@ -104,11 +124,35 @@
                      (map (fn [rel] (str/replace rel java.io.File/separator "/"))))
         dir-of  (fn [rel] (let [i (str/last-index-of rel "/")] (if i (subs rel 0 i) "")))
         base-of (fn [rel] (let [i (str/last-index-of rel "/")] (if i (subs rel (inc i)) rel)))
-        by-dir  (group-by dir-of all-rel)]
+        by-dir  (group-by dir-of all-rel)
+        ;; The defaults join the root group only, and only the ones the
+        ;; project has not already written under that name — the
+        ;; override. For the root group a relative path IS its basename,
+        ;; so adding basenames straight into by-dir's "" entry is safe.
+        by-dir  (update by-dir ""
+                        (fn [root-rels]
+                          (into (vec root-rels)
+                                (remove (set root-rels) default-root-doc-basenames))))]
     (vec (mapcat (fn [dir]
                    (let [bases (pin-index-first (map base-of (get by-dir dir)))]
                      (map (fn [base] (if (= dir "") base (str dir "/" base))) bases)))
                  (sort (keys by-dir))))))
+
+(defn doc-source
+  "doc-id's markdown text: the project's own guide-dir/doc-id if it
+   exists, else the engine's own bundled default for that name (see
+   default-root-doc-basenames) — the override mechanism. Throws if
+   neither exists, which discover-doc-ids should make impossible for any
+   doc-id it actually returned."
+  [guide-dir doc-id]
+  (let [project-file (io/file guide-dir doc-id)]
+    (if (fs/exists? project-file)
+      (slurp project-file)
+      (if-let [res (io/resource (str "content/" doc-id))]
+        (slurp res)
+        (throw (ex-info (str "no source for doc-id " doc-id
+                             " — neither the project nor the engine has it")
+                        {:guide-dir (str guide-dir) :doc-id doc-id}))))))
 
 (def ^:private mermaid-marker
   "What site.markdown/mermaidify emits, and what a project writes by hand
@@ -136,15 +180,17 @@
 
 (defn render-all-docs
   "doc-id -> {:title :toc-html :body-html :slug}, for every doc-id.
-   Always renders via md/rewrite-nested-doc-links (built per doc-id,
-   from its own path relative to guide-dir) rather than defaulting to
-   plain rewrite-doc-links — the nested-aware rewriter produces
-   byte-identical output to the flat one for every flat (no-'/') doc-id,
-   so this is safe for every existing project, not just nested ones."
+   Source text comes from doc-source, so a doc-id the project never wrote
+   itself still renders from the engine's own default. Always renders via
+   md/rewrite-nested-doc-links (built per doc-id, from its own path
+   relative to guide-dir) rather than defaulting to plain
+   rewrite-doc-links — the nested-aware rewriter produces byte-identical
+   output to the flat one for every flat (no-'/') doc-id, so this is safe
+   for every existing project, not just nested ones."
   [guide-dir doc-ids]
   (into {}
         (for [doc-id doc-ids]
-          (let [raw (slurp (io/file guide-dir doc-id))
+          (let [raw (doc-source guide-dir doc-id)
                 {:keys [title toc-html body-html]}
                 (md/render-doc-page raw (md/rewrite-nested-doc-links doc-id))]
             [doc-id {:title title :toc-html toc-html :body-html body-html

@@ -118,6 +118,28 @@ A project template overrides any engine template of the same name, so a bespoke
 inheriting none of the engine's later fixes to it, so prefer a block override
 where one will do.
 
+## The default Contributing page
+
+Every project's guide gets a `guide/contributing.html`, in the nav right
+after `index.md`, even without writing one. It comes from the engine's own
+`resources/content/contributing.md`, on the same footing as `base.html` or
+`404.html`: shared chrome, not a project's content, which is the point —
+"how to open an issue against a jlt-commons project" is the same answer
+everywhere, so it lives in one place instead of N copies that drift.
+
+A project with something project-specific to say (a note on known-broken
+areas, its own escalation path, anything beyond the shared etiquette)
+writes its own `docs/guide/contributing.md`. That file is discovered the
+same way any other guide page is, and having one there replaces the
+engine's default outright rather than merging with it.
+
+This is the general shape for any future default page: the engine's
+`discover-doc-ids` adds its own basenames to a project's guide-dir root
+group (never a nested subdirectory) for names the project has not written
+itself, and `doc-source` resolves each one to the project's file if it
+exists, else the engine's bundled default. `contributing.md` is the only
+one today.
+
 ## Markdown
 
 Standard markdown through `markdown-clj`, plus:
