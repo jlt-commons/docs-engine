@@ -37,15 +37,8 @@
      - Punctuation with a space on BOTH sides leaves the spaces behind, so
        `err*] ...) is` yields a double hyphen. GitHub does exactly this.
 
-   KNOWN GAP under jolt (not under bb/JVM): jolt's \\p{L}/\\p{N} regex
-   support fails to exclude at least one Unicode symbol character (→,
-   U+2192, confirmed via minimal repro) from the strip step below, so a
-   heading containing it slugs differently on the two hosts. Plain ASCII
-   punctuation strips correctly on both. Filed upstream against jolt
-   rather than worked around here: hand-listing 'symbol characters jolt
-   mishandles' risks masking others silently, the opposite of what a
-   Unicode-aware filter is for. Real, live impact: raylib-jlt's own
-   kwarg-drawing-api.md has a heading with a → in it."
+   jolt's \\p{L}/\\p{N} used to over-match Unicode symbols (jolt-lang/jolt#941),
+   fixed in jolt v0.8.7."
   [text]
   (-> text
       unescape-entities
