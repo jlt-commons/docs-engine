@@ -266,15 +266,27 @@
 
 (defn assign-heading-ids
   "Adds a unique id= to every <h1>/<h2>/<h3>, computed from its OWN
-   rendered text via slugify. Dedupes within a page by appending -2, -3…"
+   rendered text via slugify. Dedupes within a page by appending -2, -3…
+
+   Also appends an empty <a class=\"heading-anchor\" href=\"#id\">, the
+   same shareable-link affordance GitHub and Sphinx give every heading:
+   hidden until the heading is hovered/focused (screen.css), a plain
+   hash link, no clipboard JS. Deliberately EMPTY (no inner text, no
+   icon character here) so extract-toc-headings/extract-title's
+   strip-tags, which run on this same inner content, see only the
+   heading's own text. The '#' glyph is a CSS ::before on the anchor,
+   so there's no glyph in the HTML to leak into a page <title> or the
+   TOC sidebar."
   [html]
   (let [seen (atom {})]
     (str/replace html #"(?s)<h([123])>(.*?)</h\1>"
                  (fn [[_ level inner]]
-                   (let [base (slugify inner)
-                         n    (get (swap! seen update base (fnil inc 0)) base)
-                         id   (if (> n 1) (str base "-" n) base)]
-                     (str "<h" level " id=\"" id "\">" inner "</h" level ">"))))))
+                   (let [base   (slugify inner)
+                         n      (get (swap! seen update base (fnil inc 0)) base)
+                         id     (if (> n 1) (str base "-" n) base)
+                         anchor (str "<a class=\"heading-anchor\" href=\"#" id
+                                     "\" aria-label=\"Link to this section\"></a>")]
+                     (str "<h" level " id=\"" id "\">" inner anchor "</h" level ">"))))))
 
 (defn extract-toc-headings
   "[{:level :id :text}] for every h2/h3 in already-id'd html (h1 is the

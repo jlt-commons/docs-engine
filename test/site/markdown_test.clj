@@ -104,6 +104,23 @@
     (is (str/includes? html "<h2 id=\"see-also\">"))
     (is (str/includes? html "<h2 id=\"see-also-2\">"))))
 
+(deftest assign-heading-ids-appends-an-empty-shareable-anchor-per-heading
+  ;; The "copy link to this heading" affordance: an empty <a> right after
+  ;; the heading's own text, id-matched, so a reader can right-click it
+  ;; for a direct link without scrolling back up to the TOC. Empty on
+  ;; purpose — the '#' glyph itself is CSS (screen.css), not HTML.
+  (let [html (md/assign-heading-ids (md/render-markdown "# Title\n\n## The packing"))]
+    (is (str/includes? html "<a class=\"heading-anchor\" href=\"#title\" aria-label=\"Link to this section\"></a>"))
+    (is (str/includes? html "<a class=\"heading-anchor\" href=\"#the-packing\" aria-label=\"Link to this section\"></a>"))))
+
+(deftest assign-heading-ids-anchor-hrefs-track-deduped-ids
+  ;; A repeated heading's anchor href must match ITS OWN deduped id
+  ;; (-2, -3…), not the first occurrence's id — a copy-paste bug here
+  ;; would silently point every "See also" link at the first section.
+  (let [html (md/assign-heading-ids (md/render-markdown "## See also\n\n## See also"))]
+    (is (str/includes? html "<h2 id=\"see-also\">See also<a class=\"heading-anchor\" href=\"#see-also\" aria-label=\"Link to this section\"></a></h2>"))
+    (is (str/includes? html "<h2 id=\"see-also-2\">See also<a class=\"heading-anchor\" href=\"#see-also-2\" aria-label=\"Link to this section\"></a></h2>"))))
+
 (deftest extract-toc-headings-skips-h1-keeps-h2-and-h3
   (let [idded (md/assign-heading-ids
                (md/render-markdown "# Page title\n\n## Section A\n\n### Sub A1\n\n## Section B"))

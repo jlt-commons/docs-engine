@@ -151,6 +151,10 @@ Standard markdown through `markdown-clj`, plus:
   across subdirectories.
 - **Long reference pages** get their `<h2>` sections wrapped in collapsible
   `<details>`, with anchors, in-page find and printing all handled.
+- **Shareable heading links.** Every `<h1>`/`<h2>`/`<h3>` gets a small `#`
+  link, hidden until you hover or tab to it, the same "copy a direct link
+  to this section" affordance GitHub and Sphinx give their own headings.
+  Plain hash navigation, no clipboard JS.
 
 ## Publishing
 

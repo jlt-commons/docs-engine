@@ -45,6 +45,7 @@
 nav.toc,
 .theme-toggle,
 .print-trigger,
+.heading-anchor,
 footer {
   display: none !important;
 }

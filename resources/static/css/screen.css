@@ -468,6 +468,34 @@ nav.toc {
   color: var(--text);
 }
 
+/* The "copy link to this heading" affordance (site.markdown/assign-
+   heading-ids appends an empty <a> per heading; the '#' glyph itself is
+   this ::before, not HTML, so it can never leak into a page <title> or
+   the TOC sidebar's plain-text extraction). Hidden until the heading
+   is hovered, or the anchor itself is focused so it's reachable by
+   keyboard, not just a mouse. A plain hash link: click updates the
+   address bar, right-click gives "Copy Link" natively — no clipboard
+   JS to keep in this repo other projects pin by tag. */
+.heading-anchor {
+  display: inline-block;
+  margin-left: 0.5rem;
+  color: var(--accent);
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.heading-anchor::before {
+  content: "#";
+}
+
+.doc-content h1:hover .heading-anchor,
+.doc-content h2:hover .heading-anchor,
+.doc-content h3:hover .heading-anchor,
+.heading-anchor:focus {
+  opacity: 1;
+}
+
 .doc-content h1 {
   font-size: 2.25rem;
   line-height: 1.2;
