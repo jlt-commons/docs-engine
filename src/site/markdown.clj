@@ -35,7 +35,17 @@
        instead was the old behaviour, and it silently broke every anchor
        into a heading containing a `.` or an apostrophe.
      - Punctuation with a space on BOTH sides leaves the spaces behind, so
-       `err*] ...) is` yields a double hyphen. GitHub does exactly this."
+       `err*] ...) is` yields a double hyphen. GitHub does exactly this.
+
+   KNOWN GAP under jolt (not under bb/JVM): jolt's \\p{L}/\\p{N} regex
+   support fails to exclude at least one Unicode symbol character (→,
+   U+2192, confirmed via minimal repro) from the strip step below, so a
+   heading containing it slugs differently on the two hosts. Plain ASCII
+   punctuation strips correctly on both. Filed upstream against jolt
+   rather than worked around here: hand-listing 'symbol characters jolt
+   mishandles' risks masking others silently, the opposite of what a
+   Unicode-aware filter is for. Real, live impact: raylib-jlt's own
+   kwarg-drawing-api.md has a heading with a → in it."
   [text]
   (-> text
       unescape-entities
@@ -353,6 +363,35 @@
    feature, not a mistuned threshold."
   9000)
 
+(defn- split-before-h2-headings
+  "Splits html into chunks, each new chunk starting exactly at an
+   <h2 id=\" occurrence, with any text before the first one becoming its
+   own leading chunk. Same result as
+   (str/split html #\"(?=<h2 id=\\\")\") on the JVM/babashka -- but NOT
+   implemented that way, on purpose. jolt's str/split disagrees with the
+   JVM's for a zero-width-lookahead pattern: verified with a minimal
+   repro, (str/split \"aXbXXcXd\" #\"(?=X)\") returns 5 elements on
+   babashka (the correct split) and 8 on jolt (spurious empty strings
+   inserted between real segments), which silently broke this function's
+   own section counting under jolt (every real section arrived amid a
+   flood of near-1000 empty chunks, so the length/count thresholds below
+   never matched real content). The boundary here was always a fixed
+   literal string, never a pattern needing regex features, so a plain
+   substring search sidesteps the host disagreement entirely rather than
+   working around it."
+  [html]
+  (let [marker "<h2 id=\""
+        starts (loop [from 0 acc []]
+                 (let [i (str/index-of html marker from)]
+                   (if i
+                     (recur (inc i) (conj acc i))
+                     acc)))]
+    (if (empty? starts)
+      [html]
+      (let [bounds (into (if (zero? (first starts)) [] [0]) starts)
+            ends   (into (vec (rest bounds)) [(count html)])]
+        (mapv (fn [s e] (subs html s e)) bounds ends)))))
+
 (defn collapse-long-sections
   "Wraps each <h2> section of an already-id'd page body in a <details>,
    but only on pages that are long enough to read as a reference (see
@@ -368,7 +407,7 @@
    add) and before mermaidify, whose <pre class=\"mermaid\"> rewrite is
    position-independent."
   [html]
-  (let [chunks   (str/split html #"(?=<h2 id=\")")
+  (let [chunks   (split-before-h2-headings html)
         preamble (when-not (str/starts-with? (or (first chunks) "") "<h2 id=\"")
                    (first chunks))
         sections (if preamble (rest chunks) chunks)]

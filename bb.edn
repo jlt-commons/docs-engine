@@ -4,9 +4,48 @@
 ;; Every task takes the path to a project checkout. The engine reads that
 ;; project's docs/ and writes its _site/, and touches nothing else.
 {:paths ["src" "test" "resources"]
- :deps  {markdown-clj/markdown-clj {:mvn/version "1.11.4"}}
+ :deps  {;; :exclusions drops clj-commons/clj-yaml, markdown-clj's own
+         ;; transitive dep for YAML-frontmatter parsing (see docs-engine#3):
+         ;; its namespace-load-time DumperOptions$FlowStyle reference isn't
+         ;; resolvable under jolt. jolt-lang/yaml (below) supplies a
+         ;; clj-yaml.core-compatible namespace that markdown.transformers'
+         ;; own (:require [clj-yaml.core ...]) finds once the real one is
+         ;; excluded, on both hosts -- no per-host branching needed.
+         ;;
+         ;; Safe to exclude on EITHER host, not just untested-so-far: the
+         ;; YAML branch only fires when a doc's first line is a literal
+         ;; "---", and site.markdown's own unwrap-hard-wraps already
+         ;; rewrites every "---"-only line to "***" before markdown-clj
+         ;; ever sees the text (the existing dash-hr-renders-as-phantom-
+         ;; heading fix). So parse-yaml-metadata-headers, and therefore
+         ;; clj-yaml.core/parse-string, is unreachable through this
+         ;; pipeline on any input -- verified by reading markdown-clj
+         ;; 1.11.4's own transformers.cljc, not assumed.
+         markdown-clj/markdown-clj {:mvn/version "1.11.4"
+                                    :exclusions [clj-commons/clj-yaml]}
+         io.github.jolt-lang/yaml {:git/url "https://github.com/jolt-lang/yaml.git"
+                                   :git/sha "972b93c01685a6c02e40bae293ad51c78bcc743f"}
+         ;; babashka bundles selmer as a built-in, so this project never
+         ;; needed to declare it before. jolt doesn't bundle it the same
+         ;; way -- an explicit :mvn/version is what makes `jolt run build`
+         ;; able to resolve selmer.parser at all (see docs-engine#3).
+         selmer/selmer {:mvn/version "1.12.59"}
+         ;; Selmer's date filters reference java.time.format.FormatStyle at
+         ;; namespace-load time (see docs-engine#3). jolt has no built-in
+         ;; java.time shim, but requiring jolt-lang/time installs one, and
+         ;; that happens below, before any task-specific require, so it's
+         ;; in place before selmer.parser ever loads. Verified harmless
+         ;; under bb too: pure Clojure, no jolt.ffi, tick.core/now works
+         ;; unchanged (bb already has real java.time; this just adds tick's
+         ;; API on top of it).
+         io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
+                                   :git/sha "abeee49974c2c4efa2fa75c96d9a379822c6815f"}}
  :tasks
- {:requires ([site.project :as project])
+ {;; tick.core first, unconditionally -- see the io.github.jolt-lang/time
+  ;; comment above :deps. Everything after it in this list, and every
+  ;; task's own :requires, can then assume java.time is fully available.
+  :requires ([tick.core]
+             [site.project :as project])
 
   :init
   (def project-dir
@@ -42,6 +81,6 @@
          :task (core/clean! (project/resolve-project (project-dir)))}
 
   serve {:doc "Build, then serve a project locally (bb serve <project> [port], default 3000)"
-         :requires ([site.core :as core])
-         :task (core/serve! (project/resolve-project (project-dir))
-                            (second *command-line-args*))}}}
+         :requires ([site.serve :as serve])
+         :task (serve/serve! (project/resolve-project (project-dir))
+                             (second *command-line-args*))}}}

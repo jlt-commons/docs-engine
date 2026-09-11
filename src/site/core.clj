@@ -2,7 +2,6 @@
   (:require [babashka.fs :as fs]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [org.httpkit.server :as hk]
             [selmer.parser :as selmer]
             [site.generic-home :as generic-home]
             [site.markdown :as md]))
@@ -333,7 +332,17 @@
   (generate-404! output-dir (site-context site))
   (println "Site generated in" (str output-dir)))
 
-;; --- local preview server ---
+;; --- local preview server: handler only, no HTTP library ---
+;;
+;; Everything below builds a plain Ring handler `(fn [req]) -> {:status
+;; :headers :body}` and touches no HTTP-server library at all, so it costs
+;; build/clean/test nothing. site.serve (bb/JVM) and site.serve.jolt (jolt)
+;; are the two thin wrappers that actually bind a port, each requiring the
+;; one HTTP-server library their own host has: org.httpkit.server for
+;; bb/JVM, ring-chez.adapter for jolt. Splitting it this way is what makes
+;; build/clean/test loadable under jolt at all — org.httpkit.server isn't
+;; resolvable there, and previously every task here required it via this
+;; namespace regardless of whether it ever started a server.
 
 (defn- content-type [path]
   (cond
@@ -378,7 +387,7 @@
     (str/starts-with? uri (str base "/")) (subs uri (count base))
     :else nil))
 
-(defn- make-static-handler
+(defn make-static-handler
   "Serves output-dir's files under base (\"\" or \"/name\", see
    `base-path`), mirroring the prefix generate! already baked into every
    emitted URL. Without this, local preview and the deployed site
@@ -399,17 +408,3 @@
           {:status 200 :headers {"Content-Type" (content-type rel)} :body (io/input-stream f)}
           (not-found-response output-dir)))
       (not-found-response output-dir))))
-
-(defn serve!
-  "Builds, then serves output-dir at http://localhost:<port><base-path>
-   until interrupted."
-  [project port-str]
-  (generate! project)
-  (let [port       (Integer/parseInt (or port-str "3000"))
-        output-dir (:output-dir project)
-        base       (base-path (:base-path project))]
-    (println (str "Serving " output-dir " at http://localhost:" port base "/"))
-    ;; :ip "127.0.0.1" — local-only dev preview server; without an
-    ;; explicit :ip, http-kit binds all network interfaces by default.
-    (hk/run-server (make-static-handler output-dir base) {:port port :ip "127.0.0.1"})
-    @(promise)))

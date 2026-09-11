@@ -296,6 +296,21 @@
            (str "<h2 id=\"s" i "\">Section " i "</h2>"
                 "<p>" (apply str (repeat body-chars "x")) "</p>"))))
 
+(deftest split-before-h2-headings-matches-lookahead-split-semantics
+  ;; Same contract as (str/split html #"(?=<h2 id=\")") on the JVM, but not
+  ;; implemented that way -- jolt's str/split disagrees with the JVM's for
+  ;; a zero-width lookahead (verified separately against jolt directly;
+  ;; this pins the JVM-side behavior this function must keep matching).
+  (testing "preamble before the first heading becomes its own leading chunk"
+    (is (= ["pre" "<h2 id=\"a\">A</h2>mid" "<h2 id=\"b\">B</h2>end"]
+           (md/split-before-h2-headings "pre<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>end"))))
+  (testing "no preamble when the body starts exactly at a heading"
+    (is (= ["<h2 id=\"a\">A</h2>mid" "<h2 id=\"b\">B</h2>"]
+           (md/split-before-h2-headings "<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>"))))
+  (testing "no headings at all returns the whole string as one chunk"
+    (is (= ["just prose, no headings"]
+           (md/split-before-h2-headings "just prose, no headings")))))
+
 (deftest collapse-long-sections-leaves-short-pages-untouched
   ;; Below collapse-min-long-sections (5) the page reads as prose, and
   ;; collapsing would only hide it. Byte-identical output is the contract.

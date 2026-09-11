@@ -1,4 +1,5 @@
 _site/
 .cpcache/
 .bb/
+.jolt/
 .DS_Store
