@@ -25,6 +25,7 @@
       script.onload = () => resolve();
       script.onerror = () => {
         script.remove();
+        lunrLoading = null;
         reject(new Error('could not load ' + lunrUrl));
       };
       document.head.appendChild(script);
@@ -58,7 +59,6 @@
       .catch((error) => {
         // Forget the failure so the next open or query retries.
         loading = null;
-        lunrLoading = null;
         throw error;
       });
     return loading;
