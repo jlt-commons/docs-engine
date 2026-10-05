@@ -38,7 +38,7 @@
                 <input type="search" id="search-input" placeholder="Search docs" autocomplete="off" spellcheck="false" aria-label="Search documentation">
                 <kbd class="search-kbd">/</kbd>
               </div>
-              <div class="search-results" id="search-results" role="listbox" aria-label="Search results" hidden></div>
+              <div class="search-results" id="search-results" aria-label="Search results" hidden></div>
             </div>
           </div>
         </li>{% endif %}
@@ -93,8 +93,11 @@
 
       function openContaining(hash) {
         if (!hash || hash.length < 2) return;
+        // getElementById, not querySelector: "#3d-cube" is not a valid CSS
+        // selector (an id starting with a digit throws SyntaxError).
         var target;
-        try { target = document.querySelector(hash); } catch (e) { return; } // malformed hash
+        try { target = document.getElementById(decodeURIComponent(hash.slice(1))); }
+        catch (e) { return; } // malformed percent-encoding
         if (!target) return;
         for (var el = target; el; el = el.parentElement) {
           if (el.tagName === "DETAILS") el.open = true;

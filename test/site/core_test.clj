@@ -339,6 +339,13 @@
     (is (= (slurp (io/file (:out a) "search-documents.json"))
            (slurp (io/file (:out b) "search-documents.json"))))))
 
+(deftest collapsible-section-script-resolves-ids-without-a-css-selector
+  ;; querySelector("#3d-x") throws SyntaxError, so a hit on a digit-leading
+  ;; anchor landed on a closed <details>.
+  (let [{:keys [doc]} (build-fixture-site! "/some-lib")]
+    (is (str/includes? doc "getElementById(decodeURIComponent("))
+    (is (not (str/includes? doc "querySelector(hash)")))))
+
 (deftest site-context-exposes-search
   (is (true? (:search (core/site-context {}))))
   (is (false? (:search (core/site-context {:search false})))))

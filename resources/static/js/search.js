@@ -112,6 +112,7 @@
     results.hidden = true;
     clearActive();
     navSearch.classList.remove('open');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
   };
 
   const render = (query, matches) => {
@@ -190,7 +191,7 @@
       }
     } else if (event.key === 'Escape') {
       close();
-      input.blur();
+      if (toggle) toggle.focus(); else input.blur();
     }
   });
 
