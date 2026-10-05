@@ -97,3 +97,25 @@
     (is (every? (tokens intro) ["alpha" "beta" "one" "two" "gamma" "delta" "eps" "zeta" "eta" "theta"]))
     (is (every? (tokens sec) ["p1" "q1" "Deep" "Txt"]))
     (is (str/includes? (:text sec) "(+ 1 2)"))))
+
+(deftest raw-html-headings-do-not-abort-and-stay-with-the-previous-record
+  (testing "extra attributes"
+    (let [recs (search/page-records
+                {:title "T" :href "/p.html"
+                 :body-html "<h2 id=\"a\">A</h2><p>one</p><h2 id=\"x\" align=\"center\">Raw</h2><p>two</p>"})]
+      (is (= 2 (count recs)))
+      (is (re-find #"one" (:text (second recs))))
+      (is (re-find #"two" (:text (second recs))))))
+  (testing "tag split across lines"
+    (let [recs (search/page-records
+                {:title "T" :href "/p.html"
+                 :body-html "<h2 id=\"a\">A</h2><p>one</p><h3 id=\"x\"\n>Raw</h3><p>two</p>"})]
+      (is (= 2 (count recs)))
+      (is (re-find #"two" (:text (second recs)))))))
+
+(deftest a-bare-less-than-keeps-its-words
+  (let [recs (search/page-records
+              (page "# T\n\n## C < D\n\nif a < b and c > d then\n"))
+        h2 (second recs)]
+    (is (= "C < D" (:heading h2)))
+    (is (= "if a < b and c > d then" (:text h2)))))

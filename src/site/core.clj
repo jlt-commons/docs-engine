@@ -263,7 +263,8 @@
       (write-doc-page! site output-dir site-ctx (get rendered doc-id) nav base))
     (mapv (fn [doc-id]
             (let [{:keys [title slug body-html]} (get rendered doc-id)]
-              {:title title :href (str base "/guide/" slug ".html") :body-html body-html}))
+              {:title (or title slug) ; a page with no h1 has a nil :title
+               :href (str base "/guide/" slug ".html") :body-html body-html}))
           doc-ids)))
 
 (defn generate-home!

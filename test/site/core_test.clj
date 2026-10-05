@@ -51,7 +51,7 @@
    guide/index.md, so the README is the homepage source). :index is the
    parsed search-documents.json, or nil when none was written."
   ([base] (build-fixture-site! base {}))
-  ([base {:keys [home-template? assets? diagram? mermaid-override readme? search]}]
+  ([base {:keys [home-template? assets? diagram? mermaid-override readme? search no-h1?]}]
    (let [tmp       (fs/create-temp-dir {:prefix "jltc-site"})
          docs      (io/file (str tmp) "docs")
          guide     (io/file docs "guide")
@@ -64,6 +64,8 @@
                "# Intro\n\nHello.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
                "# Intro\n\nHello.\n")))
      (spit (io/file guide "plain.md") "# Plain\n\nNo diagram here.\n")
+     (when no-h1?
+       (spit (io/file guide "noh1.md") "No heading here.\n\n## Sec\n\ntext\n"))
      (when home-template?
        (fs/create-dirs templates)
        (spit (io/file templates "home.html")
@@ -301,6 +303,12 @@
     (is (some #(and (= "/some-lib/guide/plain.html" (get % "href"))
                     (= "Plain" (get % "heading")))
               index))))
+
+(deftest a-guide-page-with-no-h1-builds-and-is-indexed-under-its-slug
+  (let [{:keys [index]} (build-fixture-site! "/some-lib" {:no-h1? true})
+        recs (filter #(str/starts-with? (get % "href") "/some-lib/guide/noh1.html") index)]
+    (is (= 2 (count recs)))
+    (is (every? #(= "noh1" (get % "title")) recs))))
 
 (deftest search-false-writes-no-index
   (let [{:keys [out index]} (build-fixture-site! "/some-lib" {:search false})]
