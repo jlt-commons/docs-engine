@@ -23,7 +23,10 @@
       const script = document.createElement('script');
       script.src = lunrUrl;
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('could not load ' + lunrUrl));
+      script.onerror = () => {
+        script.remove();
+        reject(new Error('could not load ' + lunrUrl));
+      };
       document.head.appendChild(script);
     });
     return lunrLoading;
@@ -51,6 +54,12 @@
           this.field('text');
           docs.forEach((doc) => this.add(doc, { boost: isPage(doc) ? 3 : 1 }));
         });
+      })
+      .catch((error) => {
+        // Forget the failure so the next open or query retries.
+        loading = null;
+        lunrLoading = null;
+        throw error;
       });
     return loading;
   };
@@ -189,7 +198,10 @@
     toggle.addEventListener('click', () => {
       const open = navSearch.classList.toggle('open');
       toggle.setAttribute('aria-expanded', String(open));
-      if (open) input.focus();
+      if (open) {
+        loadIndex().catch(() => {});
+        input.focus();
+      }
     });
   }
 
@@ -200,6 +212,7 @@
     event.preventDefault();
     navSearch.classList.add('open');
     if (toggle) toggle.setAttribute('aria-expanded', 'true');
+    loadIndex().catch(() => {});
     input.focus();
     input.select();
   });
