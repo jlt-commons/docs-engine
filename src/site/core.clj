@@ -179,7 +179,8 @@
     (boolean (some (fn [t] (and t (str/includes? t mermaid-marker))) sources))))
 
 (defn render-all-docs
-  "doc-id -> {:title :toc-html :body-html :slug}, for every doc-id.
+  "doc-id -> {:title :toc-html :body-html :slug}, for every doc-id. :title is
+   never nil or empty: a page with no h1 (or an empty one) is titled by its slug.
    Source text comes from doc-source, so a doc-id the project never wrote
    itself still renders from the engine's own default. Always renders via
    md/rewrite-nested-doc-links (built per doc-id, from its own path
@@ -197,7 +198,7 @@
             ;; A page with no h1 has a nil title. Falling back to the slug here,
             ;; once, gives the nav entry, the page's <title> and its search
             ;; records the same name instead of an empty string.
-            [doc-id {:title (or title slug) :toc-html toc-html :body-html body-html
+            [doc-id {:title (or (not-empty title) slug) :toc-html toc-html :body-html body-html
                      :slug slug
                      :mermaid (str/includes? body-html mermaid-marker)}]))))
 

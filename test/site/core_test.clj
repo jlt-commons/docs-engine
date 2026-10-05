@@ -318,6 +318,14 @@
     (is (str/includes? page "<title>noh1 · jlt-commons</title>"))
     (is (str/includes? plain "href=\"/some-lib/guide/noh1.html\">noh1</a>"))))
 
+(deftest an-empty-h1-is-titled-by-its-slug-too
+  ;; extract-title returns "" for a bare `#`, which (or title slug) let through.
+  (let [dir (fs/file (fs/create-temp-dir {:prefix "jltc-empty-h1"}))]
+    (spit (io/file dir "blank.md") "#\n\nbody\n")
+    (try
+      (is (= "blank" (:title (get (core/render-all-docs dir ["blank.md"]) "blank.md"))))
+      (finally (fs/delete-tree dir)))))
+
 (deftest search-false-writes-no-index
   (let [{:keys [out index]} (build-fixture-site! "/some-lib" {:search false})]
     (is (nil? index))
