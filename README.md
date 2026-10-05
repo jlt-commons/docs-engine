@@ -153,7 +153,7 @@ A project that overrides `base.html` gets no search box, because the box lives
 in the engine's copy. Add one by hand or use a block override instead (see
 Homepages above).
 
-The search is adapted from jolt-lang.net's
+The search is adapted from jolt-lang.net's own
 ([jolt-lang/jolt-lang.github.io](https://github.com/jolt-lang/jolt-lang.github.io)).
 
 ## The default Contributing page
