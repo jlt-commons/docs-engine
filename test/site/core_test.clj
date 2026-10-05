@@ -310,6 +310,14 @@
     (is (= 2 (count recs)))
     (is (every? #(= "noh1" (get % "title")) recs))))
 
+(deftest a-guide-page-with-no-h1-is-titled-by-its-slug-in-nav-and-head
+  ;; The index used the slug, but the page's own <title> and its nav entry
+  ;; rendered a nil title as an empty string.
+  (let [{:keys [out plain]} (build-fixture-site! "/some-lib" {:no-h1? true})
+        page (slurp (io/file out "guide" "noh1.html"))]
+    (is (str/includes? page "<title>noh1 · jlt-commons</title>"))
+    (is (str/includes? plain "href=\"/some-lib/guide/noh1.html\">noh1</a>"))))
+
 (deftest search-false-writes-no-index
   (let [{:keys [out index]} (build-fixture-site! "/some-lib" {:search false})]
     (is (nil? index))

@@ -190,11 +190,15 @@
   [guide-dir doc-ids]
   (into {}
         (for [doc-id doc-ids]
-          (let [raw (doc-source guide-dir doc-id)
+          (let [raw  (doc-source guide-dir doc-id)
+                slug (slug-of doc-id)
                 {:keys [title toc-html body-html]}
                 (md/render-doc-page raw (md/rewrite-nested-doc-links doc-id))]
-            [doc-id {:title title :toc-html toc-html :body-html body-html
-                     :slug (slug-of doc-id)
+            ;; A page with no h1 has a nil title. Falling back to the slug here,
+            ;; once, gives the nav entry, the page's <title> and its search
+            ;; records the same name instead of an empty string.
+            [doc-id {:title (or title slug) :toc-html toc-html :body-html body-html
+                     :slug slug
                      :mermaid (str/includes? body-html mermaid-marker)}]))))
 
 (defn nav-items [rendered doc-ids base]
@@ -263,7 +267,7 @@
       (write-doc-page! site output-dir site-ctx (get rendered doc-id) nav base))
     (mapv (fn [doc-id]
             (let [{:keys [title slug body-html]} (get rendered doc-id)]
-              {:title (or title slug) ; a page with no h1 has a nil :title
+              {:title title
                :href (str base "/guide/" slug ".html") :body-html body-html}))
           doc-ids)))
 

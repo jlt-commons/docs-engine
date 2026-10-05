@@ -222,6 +222,14 @@
     if (!navSearch.contains(event.target)) close();
   });
 
+  // Tabbing past the last hit (or Shift-Tab past the toggle) moves focus out
+  // without a click, so close then too. A null relatedTarget means focus left
+  // the page itself (another window or tab); keep the popover for the return.
+  navSearch.addEventListener('focusout', (event) => {
+    const next = event.relatedTarget;
+    if (next && !navSearch.contains(next)) close();
+  });
+
   results.addEventListener('click', (event) => {
     if (event.target.closest('.search-hit')) close();
   });
