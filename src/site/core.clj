@@ -4,7 +4,8 @@
             [clojure.string :as str]
             [selmer.parser :as selmer]
             [site.generic-home :as generic-home]
-            [site.markdown :as md]))
+            [site.markdown :as md]
+            [site.search :as search]))
 
 ;; Templates are staged per build (see stage-templates!) rather than read
 ;; straight out of the engine's own resources, because a project supplies
@@ -214,13 +215,20 @@
         (str base "/guide/" (slug-of (first doc-ids)) ".html")
         (str base "/guide/index.html")))))
 
+(defn search-enabled?
+  "Search is on unless site.edn says :search false, so a project gets it
+   without asking and a site with its own search can opt out."
+  [site]
+  (not= false (:search site)))
+
 (defn site-context
   "Template variables every page needs. site-base is the empty string for
    a root-hosted site and \"/name\" for a project site; every URL in the
    templates is written as {{site-base}}/... so both cases work."
   [{:keys [title description github-url] :as site}]
   (let [base (base-path (:base-path site))]
-    {:site-title      title
+    {:search          (search-enabled? site)
+     :site-title      title
      :site-brand      title
      :site-tagline    description
      :site-github-url github-url
@@ -242,21 +250,35 @@
                                       :nav nav
                                       :active-href href})))))
 
-(defn generate-docs! [{:keys [output-dir guide-dir] :as site}]
+(defn generate-docs!
+  "Writes every guide page and returns [{:title :href :body-html}] for the
+   search index."
+  [{:keys [output-dir guide-dir] :as site}]
   (let [doc-ids  (discover-doc-ids guide-dir)
         rendered (render-all-docs guide-dir doc-ids)
         base     (base-path (:base-path site))
         nav      (nav-items rendered doc-ids base)
         site-ctx (site-context site)]
     (doseq [doc-id doc-ids]
-      (write-doc-page! site output-dir site-ctx (get rendered doc-id) nav base))))
+      (write-doc-page! site output-dir site-ctx (get rendered doc-id) nav base))
+    (mapv (fn [doc-id]
+            (let [{:keys [title slug body-html]} (get rendered doc-id)]
+              {:title title :href (str base "/guide/" slug ".html") :body-html body-html}))
+          doc-ids)))
 
 (defn generate-home!
   "The project's own :home-template when it declares one, else the generic
-   homepage rendered from its guide index or README."
+   homepage rendered from its guide index or README.
+
+   Returns {:title :href :body-html} for the search index when the generic
+   homepage came from the README, else nil. A guide/index.md homepage is
+   already indexed as /guide/index.html, and a bespoke template has no
+   markdown to index."
   [{:keys [output-dir home-template templates-dir] :as site}]
   (let [out-path (io/file output-dir "index.html")
-        site-ctx (site-context site)]
+        site-ctx (site-context site)
+        ;; Rendered once up front so the page and the index share it.
+        source   (when-not home-template (generic-home/rendered-source site))]
     (io/make-parents out-path)
     (spit out-path
           (if home-template
@@ -275,13 +297,26 @@
                                           :mermaid (mermaid-needed?
                                                     site
                                                     (when (fs/exists? src) (slurp src)))})))
-            (let [html (generic-home/render site site-ctx)]
+            (let [html (generic-home/render site site-ctx source)]
               ;; The generic homepage renders markdown, so its own output is
               ;; the honest source. Re-render only when a diagram turned up,
               ;; which is rare and costs one extra pass on one page.
               (if (mermaid-needed? site html)
-                (generic-home/render site (assoc site-ctx :mermaid true))
-                html))))))
+                (generic-home/render site (assoc site-ctx :mermaid true) source)
+                html))))
+    (when (= :readme (:source source))
+      {:title     (or (:title source) (:site-title site-ctx))
+       :href      (str (:site-base site-ctx) "/")
+       :body-html (:body-html source)})))
+
+(defn generate-search-index!
+  "Writes output-dir/search-documents.json from pages, a seq of
+   {:title :href :body-html}. The file is the whole client-side index, so
+   its bytes must depend only on the pages: search/index-documents sorts
+   by href."
+  [output-dir pages]
+  (spit (io/file output-dir "search-documents.json")
+        (search/->json (search/index-documents pages))))
 
 (defn generate-404! [output-dir site-ctx]
   (let [out-path (io/file output-dir "404.html")]
@@ -327,8 +362,10 @@
   (stage-templates! site)
   (copy-static! output-dir)
   (copy-project-assets! site)
-  (generate-home! site)
-  (generate-docs! site)
+  (let [home (generate-home! site)
+        docs (generate-docs! site)]
+    (when (search-enabled? site)
+      (generate-search-index! output-dir (cond-> docs home (conj home)))))
   (generate-404! output-dir (site-context site))
   (println "Site generated in" (str output-dir)))
 

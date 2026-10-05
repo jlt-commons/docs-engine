@@ -1,6 +1,7 @@
 (ns site.core-test
   (:require [babashka.fs :as fs]
             [clojure.java.io :as io]
+            [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [site.core :as core]))
@@ -44,19 +45,24 @@
 
 (defn- build-fixture-site!
   "Builds a complete site into a temp dir and returns
-   {:out :doc :home :site}. opts: :base, :home-template? (ship a project
-   homepage template), :assets? (ship an asset directory)."
+   {:out :doc :home :site :index}. opts: :home-template? (ship a project
+   homepage template), :assets? (ship an asset directory), :search (copied
+   into the site map when given), :readme? (ship a README.md and no
+   guide/index.md, so the README is the homepage source). :index is the
+   parsed search-documents.json, or nil when none was written."
   ([base] (build-fixture-site! base {}))
-  ([base {:keys [home-template? assets? diagram? mermaid-override]}]
+  ([base {:keys [home-template? assets? diagram? mermaid-override readme? search]}]
    (let [tmp       (fs/create-temp-dir {:prefix "jltc-site"})
          docs      (io/file (str tmp) "docs")
          guide     (io/file docs "guide")
          templates (io/file docs "templates")]
      (fs/create-dirs guide)
-     (spit (io/file guide "index.md")
-           (if diagram?
-             "# Intro\n\nHello.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
-             "# Intro\n\nHello.\n"))
+     (if readme?
+       (spit (io/file (str tmp) "README.md") "# Readme Title\n\n## Usage\n\nRun it.\n")
+       (spit (io/file guide "index.md")
+             (if diagram?
+               "# Intro\n\nHello.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
+               "# Intro\n\nHello.\n")))
      (spit (io/file guide "plain.md") "# Plain\n\nNo diagram here.\n")
      (when home-template?
        (fs/create-dirs templates)
@@ -74,11 +80,15 @@
                          :output-dir (io/file (str tmp) "_site")
                          :home-template (when home-template? "home.html")
                          :asset-dirs (when assets? [(io/file docs "media")])}
+                  readme?                  (assoc :readme-file (io/file (str tmp) "README.md"))
+                  (some? search)           (assoc :search search)
                   (some? mermaid-override) (assoc :mermaid mermaid-override))]
        (core/generate! site)
        {:out   (:output-dir site)
         :site  site
-        :doc   (slurp (io/file (:output-dir site) "guide" "index.html"))
+        :index (let [f (io/file (:output-dir site) "search-documents.json")]
+                 (when (fs/exists? f) (json/parse-string (slurp f))))
+        :doc   (when-not readme? (slurp (io/file (:output-dir site) "guide" "index.html")))
         :plain (slurp (io/file (:output-dir site) "guide" "plain.html"))
         :home  (slurp (io/file (:output-dir site) "index.html"))}))))
 
@@ -281,3 +291,46 @@
       (let [contributing (slurp (io/file (:output-dir site) "guide" "contributing.html"))]
         (is (str/includes? contributing "Our own house rules."))
         (is (not (str/includes? contributing "Etiquette")))))))
+
+(defn- hrefs [index] (map #(get % "href") index))
+
+(deftest build-writes-a-parseable-search-index
+  (let [{:keys [index]} (build-fixture-site! "/some-lib")]
+    (is (seq index))
+    (is (every? #(str/starts-with? % "/some-lib/") (hrefs index)))
+    (is (some #(and (= "/some-lib/guide/plain.html" (get % "href"))
+                    (= "Plain" (get % "heading")))
+              index))))
+
+(deftest search-false-writes-no-index
+  (let [{:keys [out index]} (build-fixture-site! "/some-lib" {:search false})]
+    (is (nil? index))
+    (is (not (fs/exists? (io/file out "search-documents.json"))))))
+
+(deftest bespoke-homepage-is-not-indexed
+  (let [{:keys [index]} (build-fixture-site! "/some-lib" {:home-template? true})]
+    (is (seq index))
+    (is (not (some #{"/some-lib/"} (hrefs index))))))
+
+(deftest readme-homepage-is-indexed
+  (let [{:keys [index]} (build-fixture-site! "/some-lib" {:readme? true})
+        by-href         (group-by #(get % "href") index)]
+    (is (= "Readme Title" (get (first (get by-href "/some-lib/")) "heading")))
+    (is (= "Run it." (get (first (get by-href "/some-lib/#usage")) "text")))))
+
+(deftest guide-index-homepage-is-not-indexed-twice
+  ;; guide/index.md renders at both / and /guide/index.html; indexing both
+  ;; would return every hit for it twice.
+  (let [{:keys [index]} (build-fixture-site! "/some-lib")]
+    (is (not (some #{"/some-lib/"} (hrefs index))))
+    (is (= 1 (count (filter #{"/some-lib/guide/index.html"} (hrefs index)))))))
+
+(deftest index-is-byte-identical-across-builds
+  (let [a (build-fixture-site! "/some-lib")
+        b (build-fixture-site! "/some-lib")]
+    (is (= (slurp (io/file (:out a) "search-documents.json"))
+           (slurp (io/file (:out b) "search-documents.json"))))))
+
+(deftest site-context-exposes-search
+  (is (true? (:search (core/site-context {}))))
+  (is (false? (:search (core/site-context {:search false})))))

@@ -28,29 +28,46 @@
   [html]
   (str/replace html #"href='(?!https?://|/)([^']*\.html[^']*)'" "href='guide/$1'"))
 
+(defn rendered-source
+  "What the homepage's source document rendered to, so a caller can both
+   build the page and index it without rendering the markdown twice.
+   :source is :guide-index, :readme or nil; :title and :body-html come
+   from md/render-doc-page and are nil when there is no source. :toc-html
+   rides along for the page template."
+  [project]
+  (let [src (content-source project)]
+    (cond
+      (nil? src)
+      {:source nil}
+
+      (= (.getName src) "index.md")
+      (assoc (md/render-doc-page (slurp src) (md/rewrite-nested-doc-links "index.md"))
+             :source :guide-index)
+
+      :else
+      (assoc (md/render-doc-page (slurp src)) :source :readme))))
+
 (defn render
   "The generic homepage as HTML.
 
    Only the guide/index.md case gets its links rewritten and then
    guide/-prefixed. README-sourced content keeps whatever the default
    rewrite produced: its links are relative to the repository root, which
-   is a different context and out of scope here."
-  [project site-ctx]
-  (let [src          (content-source project)
-        guide-index? (and src (= (.getName src) "index.md"))
-        rendered     (cond
-                       (nil? src)   nil
-                       guide-index? (md/render-doc-page (slurp src) (md/rewrite-nested-doc-links "index.md"))
-                       :else        (md/render-doc-page (slurp src)))
-        content      (cond
-                       (nil? src)   (str "<h1>" (:site-title site-ctx) "</h1><p>No documentation yet.</p>")
-                       guide-index? (prefix-guide-links (:body-html rendered))
-                       :else        (:body-html rendered))]
-    (selmer/render-file "generic-home.html"
-                        (merge site-ctx
-                               {:page    "home"
-                                :content content
-                                ;; nil when there is no source document or it has no
-                                ;; h2/h3. Selmer reads nil as falsy, so {% if toc %}
-                                ;; skips the block.
-                                :toc     (:toc-html rendered)}))))
+   is a different context and out of scope here.
+
+   The three-arity form takes an already-computed rendered-source, for a
+   caller that needs the same render for something else."
+  ([project site-ctx] (render project site-ctx (rendered-source project)))
+  ([_project site-ctx {:keys [source body-html toc-html]}]
+   (let [content (case source
+                   nil          (str "<h1>" (:site-title site-ctx) "</h1><p>No documentation yet.</p>")
+                   :guide-index (prefix-guide-links body-html)
+                   body-html)]
+     (selmer/render-file "generic-home.html"
+                         (merge site-ctx
+                                {:page    "home"
+                                 :content content
+                                 ;; nil when there is no source document or it has no
+                                 ;; h2/h3. Selmer reads nil as falsy, so {% if toc %}
+                                 ;; skips the block.
+                                 :toc     toc-html})))))
