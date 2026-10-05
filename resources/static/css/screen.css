@@ -1110,11 +1110,17 @@ section p code,
 }
 .search-results { max-height: min(60vh, 420px); overflow-y: auto; overflow-x: hidden; padding: 6px; }
 .search-empty { padding: 14px 12px; color: var(--text-dim); font-size: 0.88rem; }
-.search-hit {
+/* The popover sits inside ul.links, so every hit is also matched by the nav's
+   `.links a` rule (uppercase, letter-spacing, inline-block, an underline
+   border). `.links .search-hit` outranks it, and each property that rule sets
+   is reset here rather than inherited. */
+.links .search-hit {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 2px; overflow-wrap: anywhere;
   padding: 8px 10px; border-radius: 6px; text-decoration: none;
+  border-bottom: none; color: var(--text); font-size: inherit; font-weight: normal;
+  letter-spacing: normal; text-transform: none;
 }
-.search-hit:hover, .search-hit.active { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.links .search-hit:hover, .links .search-hit.active { color: var(--text); background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .search-hit .hit-title { color: var(--text); font-size: 0.85rem; font-weight: 600; }
 .search-hit .hit-heading { color: var(--accent); font-size: 0.78rem; }
 .search-hit .hit-text {

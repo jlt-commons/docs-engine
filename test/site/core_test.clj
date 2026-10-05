@@ -369,6 +369,14 @@
     (is (not (str/includes? doc "nav-search")))
     (is (not (str/includes? doc "search.js")))))
 
+(deftest search-hits-outrank-the-nav-link-rule
+  ;; The popover lives inside ul.links, so a bare .search-hit loses to
+  ;; `.links a` and every hit renders uppercase on one line.
+  (let [css (slurp (io/resource "static/css/screen.css"))]
+    (is (str/includes? css ".links .search-hit {"))
+    (is (not (re-find #"(?m)^\.search-hit \{" css)))
+    (is (str/includes? css "text-transform: none"))))
+
 (deftest search-assets-are-copied
   (let [{:keys [out]} (build-fixture-site! "")]
     (is (fs/exists? (io/file out "js" "search.js")))
