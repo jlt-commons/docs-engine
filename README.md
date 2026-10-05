@@ -63,6 +63,7 @@ Leave `:base-path` as `""` only for a site served at a domain root.
 | `:asset-dirs` | none | Directories under `docs/` copied into the build verbatim |
 | `:templates-dir` | `templates` | Where project templates live, relative to `docs/` |
 | `:home-template` | none, so the generic homepage | A file in the templates dir |
+| `:search` | `true` | `false` turns off the search index, the nav search box and the script tag |
 
 `:asset-dirs` is an allowlist, and each entry names one directory directly under
 `docs/`. No separators, no leading dot, no `..`. This decides what gets copied
@@ -119,12 +120,41 @@ Every internal URL goes through `{{site-base}}`. A bare `/guide/index.html` in a
 project template points at the organization site.
 
 Available variables: `site-title`, `site-brand`, `site-tagline`, `site-github-url`,
-`site-base`, `site-docs-href`.
+`site-base`, `site-docs-href`, `search` (a boolean, true unless the project sets
+`:search false`).
 
 A project template overrides any engine template of the same name, so a bespoke
 `404.html` or `docs.html` works the same way. Overriding `base.html` means
 inheriting none of the engine's later fixes to it, so prefer a block override
 where one will do.
+
+## Search
+
+Every site gets client-side search, with nothing to configure. A magnifier in
+the nav opens it, `/` focuses the box, the arrow keys and Enter pick a hit, and
+a hit inside a collapsed section opens that section when you land on it.
+
+The build writes `_site/search-documents.json`, one record per page, per h2 and
+per h3. It covers every guide page, including the engine's default ones such as
+Contributing, and the generic homepage when that is rendered from `README.md`.
+Two things stay out. A bespoke `:home-template` isn't indexed, because it is a
+Selmer template and not rendered markdown. A generic homepage rendered from
+`docs/guide/index.md` isn't either, since that guide page is already indexed and
+a second copy would return every hit twice. Records are sorted by href so a
+rebuild is byte-identical, and each href carries the `:base-path`.
+
+lunr.js (vendored, 2.3.9, MIT) and the index load only when a reader first opens
+search. Someone who never searches downloads neither.
+
+To turn it off, put `:search false` in `docs/site.edn`. The build then writes no
+index file, and the nav has no search box and no `search.js` tag.
+
+A project that overrides `base.html` gets no search box, because the box lives
+in the engine's copy. Add one by hand or use a block override instead (see
+Homepages above).
+
+The search is adapted from jolt-lang.net's
+([jolt-lang/jolt-lang.github.io](https://github.com/jolt-lang/jolt-lang.github.io)).
 
 ## The default Contributing page
 
