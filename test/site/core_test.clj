@@ -334,3 +334,27 @@
 (deftest site-context-exposes-search
   (is (true? (:search (core/site-context {}))))
   (is (false? (:search (core/site-context {:search false})))))
+
+(deftest nav-search-carries-base-pathed-urls
+  (let [{:keys [doc home]} (build-fixture-site! "/some-lib")]
+    (is (str/includes? doc "id=\"nav-search\""))
+    (is (str/includes? doc "data-index=\"/some-lib/search-documents.json\""))
+    (is (str/includes? doc "data-lunr=\"/some-lib/vendor/lunr/lunr.min.js\""))
+    (is (str/includes? doc "src=\"/some-lib/js/search.js\""))
+    (is (str/includes? home "id=\"nav-search\""))))
+
+(deftest lunr-is-not-loaded-eagerly
+  ;; search.js appends lunr on first use; a page that never searches
+  ;; should not pay for the library.
+  (let [{:keys [doc]} (build-fixture-site! "/some-lib")]
+    (is (not (str/includes? doc "<script src=\"/some-lib/vendor/lunr/lunr.min.js\"")))))
+
+(deftest search-false-renders-no-search-ui
+  (let [{:keys [doc]} (build-fixture-site! "/some-lib" {:search false})]
+    (is (not (str/includes? doc "nav-search")))
+    (is (not (str/includes? doc "search.js")))))
+
+(deftest search-assets-are-copied
+  (let [{:keys [out]} (build-fixture-site! "")]
+    (is (fs/exists? (io/file out "js" "search.js")))
+    (is (fs/exists? (io/file out "vendor" "lunr" "lunr.min.js")))))

@@ -27,6 +27,21 @@
         <li {% ifequal page "home" %}class="selected"{% endifequal %}><a href="{{site-base}}/">Home</a></li>
         <li {% ifequal page "docs" %}class="selected"{% endifequal %}><a href="{{site-docs-href}}">Docs</a></li>
         {% if site-github-url %}<li><a href="{{site-github-url}}" target="_blank" rel="noopener noreferrer">GitHub</a></li>{% endif %}
+        {% if search %}<li>
+          <div class="nav-search" id="nav-search" data-index="{{site-base}}/search-documents.json" data-lunr="{{site-base}}/vendor/lunr/lunr.min.js">
+            <button type="button" class="search-toggle" id="search-toggle" aria-label="Open search" aria-expanded="false">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            </button>
+            <div class="search-popover">
+              <div class="search-field">
+                <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="search" id="search-input" placeholder="Search docs" autocomplete="off" spellcheck="false" aria-label="Search documentation">
+                <kbd class="search-kbd">/</kbd>
+              </div>
+              <div class="search-results" id="search-results" role="listbox" aria-label="Search results" hidden></div>
+            </div>
+          </div>
+        </li>{% endif %}
         <li><button class="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Toggle light/dark theme">◐</button></li>
       </ul>
     </div>
@@ -130,6 +145,7 @@
       });
     })();
   </script>
+  {% if search %}<script src="{{site-base}}/js/search.js"></script>{% endif %}
   {% block page-scripts %}{% endblock %}
 </body>
 </html>

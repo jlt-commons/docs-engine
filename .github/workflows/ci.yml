@@ -70,4 +70,35 @@ jobs:
             echo "the URLs above escape the base path and would hit the org site"
             exit 1
           fi
+          # The search index has to answer queries, not just exist. This loads
+          # the vendored lunr and the generated documents the way search.js
+          # does, and checks the guide page comes back first for a word in it.
+          test -f "$out/search-documents.json" || { echo "no search index"; exit 1; }
+          grep -q 'id="nav-search"' "$out/index.html" || { echo "no search box in the nav"; exit 1; }
+          node -e '
+            const fs = require("fs");
+            const lunr = require(process.argv[1]);
+            const docs = JSON.parse(fs.readFileSync(process.argv[2], "utf8"));
+            const bad = docs.filter(d => !d.href.startsWith("/demo-project/"));
+            if (bad.length) { console.error("hrefs escape the base path:", bad); process.exit(1); }
+            const isPage = d => !d.href.includes("#");
+            const idx = lunr(function () {
+              this.ref("href");
+              this.field("title", { boost: 10, extractor: d => isPage(d) ? d.title : "" });
+              this.field("page", { boost: 2, extractor: d => d.title });
+              this.field("heading", { boost: 5 });
+              this.field("text");
+              docs.forEach(d => this.add(d, { boost: isPage(d) ? 3 : 1 }));
+            });
+            const q = s => idx.query(qq => lunr.tokenizer(s).map(String).forEach(t => {
+              qq.term(t, { boost: 10 });
+              qq.term(t, { usePipeline: false, wildcard: lunr.Query.wildcard.TRAILING });
+            }));
+            const hits = q("body");
+            if (!hits.length || hits[0].ref !== "/demo-project/guide/index.html") {
+              console.error("expected /demo-project/guide/index.html first, got", hits.map(h => h.ref)); process.exit(1);
+            }
+            ["body:", "bo*", "\"body\""].forEach(s => q(s));
+            console.log("search index builds and answers");
+          ' "$out/vendor/lunr/lunr.min.js" "$out/search-documents.json"
           echo "end-to-end build is correct"
