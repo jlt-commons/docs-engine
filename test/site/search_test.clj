@@ -87,3 +87,13 @@
               [{:title "B" :href "/b.html" :body-html "<p>b</p>"}
                {:title "A" :href "/a.html" :body-html "<p>a</p>"}])]
     (is (= "/a.html" (:href (first recs))))))
+
+(deftest adjacent-blocks-stay-separate-words
+  (let [src (str "# T\n\nalpha\n\nbeta\n\n* one\n* two\n\n"
+                 "| gamma | delta |\n|-------|-------|\n| eps | zeta |\n| eta | theta |\n\n"
+                 "## Sec\n\n* p1\n* q1\n\n#### Deep\n\nTxt\n\n```\n(+ 1 2)\n```\n")
+        [intro sec] (search/page-records (page src))
+        tokens #(set (str/split (:text %) #"\s+"))]
+    (is (every? (tokens intro) ["alpha" "beta" "one" "two" "gamma" "delta" "eps" "zeta" "eta" "theta"]))
+    (is (every? (tokens sec) ["p1" "q1" "Deep" "Txt"]))
+    (is (str/includes? (:text sec) "(+ 1 2)"))))

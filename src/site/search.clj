@@ -32,10 +32,14 @@
        "]"))
 
 (defn- plain-text
-  "Rendered HTML -> single-line plain text: tags stripped, entities
-   decoded, whitespace collapsed."
+  "Rendered HTML -> single-line plain text: closing block tags and <br>
+   become a space (so neighbouring cells/items stay separate words), then
+   tags stripped, entities decoded, whitespace collapsed. Inline tags are
+   removed without a space."
   [html]
-  (-> html md/strip-tags md/unescape-entities (str/replace #"\s+" " ") str/trim))
+  (-> html
+      (str/replace #"(?i)</(?:p|li|td|th|tr|pre|blockquote|dt|dd|div|summary|h4|h5|h6)>|<br\s*/?>" " ")
+      md/strip-tags md/unescape-entities (str/replace #"\s+" " ") str/trim))
 
 (defn- heading-starts
   "Sorted positions of every <h2 id=\" and <h3 id=\" in html. Found with
