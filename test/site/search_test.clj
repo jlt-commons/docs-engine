@@ -2,6 +2,7 @@
   (:require [cheshire.core :as json]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [site.markdown :as md]
             [site.search :as search]))
 
 (deftest json-round-trips-through-a-real-parser
@@ -31,3 +32,58 @@
   (is (thrown-with-msg? clojure.lang.ExceptionInfo
                         #"values must be strings"
                         (search/->json [{:n 1}]))))
+
+(defn- page [src]
+  {:title "T" :href "/x/guide/p.html" :body-html (:body-html (md/render-doc-page src))})
+
+(deftest intro-only-page-is-one-record
+  (is (= [{:title "T" :heading "T" :href "/x/guide/p.html" :text "Just intro."}]
+         (search/page-records (page "# T\n\nJust intro.\n")))))
+
+(deftest empty-body-is-one-record
+  (let [recs (search/page-records {:title "T" :href "/x/guide/p.html" :body-html ""})]
+    (is (= 1 (count recs)))
+    (is (= "" (:text (first recs))))))
+
+(deftest h2-and-h3-records-carry-the-heading-path
+  (let [recs (search/page-records
+              (page "# T\n\nIntro.\n\n## Alpha\n\nA body.\n\n### Sub\n\nSub body.\n\n## Beta\n\nB body.\n"))]
+    (is (= ["/x/guide/p.html" "/x/guide/p.html#alpha" "/x/guide/p.html#sub" "/x/guide/p.html#beta"]
+           (map :href recs)))
+    (is (= ["T" "Alpha" "Alpha \u203a Sub" "Beta"] (map :heading recs)))
+    (is (= ["Intro." "A body." "Sub body." "B body."] (map :text recs)))))
+
+(deftest duplicate-headings-keep-their-own-text
+  (let [recs (search/page-records
+              (page "# T\n\n## Alpha\n\nOne.\n\n## Alpha\n\nTwo.\n"))
+        by-href (into {} (map (juxt :href :text)) recs)]
+    (is (= "One." (get by-href "/x/guide/p.html#alpha")))
+    (is (= "Two." (get by-href "/x/guide/p.html#alpha-2")))))
+
+(deftest markup-and-entities-become-plain-text
+  (let [recs (search/page-records
+              (page "# Title &amp; co\n\n## Use `x_y` here\n\nSee <b>bold</b> &amp; `a_b`.\n"))
+        h2 (second recs)]
+    (is (= "Use x_y here" (:heading h2)))
+    (is (= "See bold & a_b." (:text h2)))
+    (doseq [r recs, k [:text :heading]]
+      (is (not (str/includes? (get r k) "<")))
+      (is (not (str/includes? (get r k) "&#"))))))
+
+(deftest collapsed-sections-split-the-same
+  (let [src (str "# T\n\nIntro.\n\n"
+                 (str/join "\n\n"
+                           (for [n (range 10)]
+                             (str "## S" n "\n\n" (str/join " " (repeat 150 "wordy"))))))
+        {:keys [body-html print-html]} (md/render-doc-page src)
+        mk (fn [h] (search/page-records {:title "T" :href "/p.html" :body-html h}))]
+    (is (str/includes? body-html "<details"))
+    (is (not (str/includes? print-html "<details")))
+    (is (= 11 (count (mk body-html))))
+    (is (= (mk print-html) (mk body-html)))))
+
+(deftest index-documents-sorts-by-href
+  (let [recs (search/index-documents
+              [{:title "B" :href "/b.html" :body-html "<p>b</p>"}
+               {:title "A" :href "/a.html" :body-html "<p>a</p>"}])]
+    (is (= "/a.html" (:href (first recs))))))
