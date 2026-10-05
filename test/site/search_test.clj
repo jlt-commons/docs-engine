@@ -18,11 +18,14 @@
              (json/parse-string (search/->json [{:text s}]))))))
   (testing "empty seq produces empty array"
     (is (= "[]" (search/->json []))))
-  (testing "the encoded string for 'ls ' contains a space character"
-    (is (str/includes? (search/->json [{:text "ls "}]) " ")))
-  (testing "keys keep insertion order irrelevant; compare parsed values"
-    (is (= [{"text" "value"}]
-           (json/parse-string (search/->json [{:text "value"}]))))))
+  (testing "U+2028 LINE SEPARATOR is escaped as \\u2028, not raw character"
+    (let [out (search/->json [{:text (str "a" (char 0x2028) "b")}])]
+      (is (str/includes? out "\\u2028"))
+      (is (not (str/includes? out (str (char 0x2028)))))))
+  (testing "U+2029 PARAGRAPH SEPARATOR is escaped as \\u2029, not raw character"
+    (let [out (search/->json [{:text (str "a" (char 0x2029) "b")}])]
+      (is (str/includes? out "\\u2029"))
+      (is (not (str/includes? out (str (char 0x2029))))))))
 
 (deftest json-rejects-non-string-values
   (is (thrown-with-msg? clojure.lang.ExceptionInfo

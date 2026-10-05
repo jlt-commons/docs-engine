@@ -3,7 +3,7 @@
 
 (defn- escape-json-string [s]
   (str/replace s
-               (re-pattern "[\"\\\\\\u0000-\\u001f]")
+               (re-pattern "[\"\\\\\\u0000-\\u001f  ]")
                (fn [c]
                  (case c
                    "\"" "\\\""
