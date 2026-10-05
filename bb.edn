@@ -71,8 +71,9 @@
          :requires ([clojure.test :as t]
                     [site.markdown-test]
                     [site.project-test]
-                    [site.core-test])
-         :task (let [{:keys [fail error]} (t/run-tests 'site.markdown-test 'site.project-test 'site.core-test)]
+                    [site.core-test]
+                    [site.search-test])
+         :task (let [{:keys [fail error]} (t/run-tests 'site.markdown-test 'site.project-test 'site.core-test 'site.search-test)]
                  (when (pos? (+ fail error)) (System/exit 1)))}
 
   build {:doc "Generate a project's site into its _site/ (bb build <project>, or jolt run build <project>)"
