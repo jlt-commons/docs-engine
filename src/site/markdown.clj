@@ -249,6 +249,35 @@
                        (if buffer (str buffer " " (str/trim line)) line)
                        out)))))))))
 
+(def ^:private html-or-stray-lt
+  "One alternation, tried at every <: a whole CommonMark HTML construct
+   (open tag with attributes, closing tag, comment, <!...> declaration,
+   <?...?>), else a lone <. Non-capturing groups only, so str/replace hands
+   the replacement fn a plain string. <![^>]*> also keeps markdown-clj's
+   mangled comments (<!&ndash; x &ndash;>), which browsers hide as bogus
+   comments, hidden rather than turning them into visible text."
+  (re-pattern
+   (str "<[A-Za-z][A-Za-z0-9-]*"
+        "(?:\\s+[A-Za-z_:][A-Za-z0-9_.:-]*"
+        "(?:\\s*=\\s*(?:[^\\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*"
+        "\\s*/?>"
+        "|</[A-Za-z][A-Za-z0-9-]*\\s*>"
+        "|<!--[\\s\\S]*?-->"
+        "|<![^>]*>"
+        "|<\\?[\\s\\S]*?\\?>"
+        "|<")))
+
+(defn escape-stray-lt
+  "Escapes each < in rendered html that does not begin real HTML, the way
+   GitHub (CommonMark) does. markdown-clj passes every bare < through, and
+   a browser opens a tag at `x<y` and hides everything up to the next >, so
+   `compare x<y and stop.` rendered as just `compare x`. A < that does start
+   a tag (`<kbd>`, and also `<b and c>` or `Vec<String>`, which GitHub treats
+   as HTML too) is left alone. Code spans and blocks are already &lt;-escaped
+   by markdown-clj, so they contain no bare < to touch."
+  [html]
+  (str/replace html html-or-stray-lt (fn [m] (if (= m "<") "&lt;" m))))
+
 (defn render-markdown
   "markdown -> HTML. Does NOT use markdown-clj's own :heading-anchors —
    its id-generation embeds literal entity text (&#95; etc.) in id
@@ -262,10 +291,11 @@
    emphasis and hard-wrapped source paragraphs/list-items don't trip
    markdown-clj's line-oriented parsing."
   [markdown-text]
-  (md/md-to-html-string (-> markdown-text
-                            escape-intraword-underscores
-                            unwrap-hard-wraps)
-                        :code-style (fn [lang] (str "class=\"" lang "\""))))
+  (escape-stray-lt
+   (md/md-to-html-string (-> markdown-text
+                             escape-intraword-underscores
+                             unwrap-hard-wraps)
+                         :code-style (fn [lang] (str "class=\"" lang "\"")))))
 
 (defn assign-heading-ids
   "Adds a unique id= to every <h1>/<h2>/<h3>, computed from its OWN

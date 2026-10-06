@@ -1,6 +1,6 @@
 (ns site.markdown-test
   (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
+            [clojure.test :refer [are deftest is testing]]
             [site.markdown :as md]))
 
 (deftest slugify-plain-text
@@ -385,3 +385,43 @@
 (deftest slugify-keeps-hyphens-and-underscores
   (is (= "reactive-area" (md/slugify "reactive-area")))
   (is (= "gl_area_smokeclj" (md/slugify "<code>gl_area_smoke.clj</code>"))))
+
+;; markdown-clj passes every bare < straight through. GitHub (CommonMark)
+;; escapes each one that does not begin real HTML. Expected values below are
+;; GitHub's own rendering of the same source, via its markdown API, for <.
+
+(deftest escape-stray-lt-escapes-what-github-escapes
+  (are [in out] (= out (md/escape-stray-lt in))
+    "<p>keep a < b and c > d</p>"  "<p>keep a &lt; b and c > d</p>"
+    "<p>when x<5 holds</p>"        "<p>when x&lt;5 holds</p>"
+    "<p>when x <= 5 holds</p>"     "<p>when x &lt;= 5 holds</p>"
+    "<p>the -> and <- arrows</p>"  "<p>the -> and &lt;- arrows</p>"
+    "<p>when x<y holds, and a>b we stop.</p>"
+    "<p>when x&lt;y holds, and a>b we stop.</p>"
+    "<p>compare x<y and stop.</p>" "<p>compare x&lt;y and stop.</p>"
+    "<p>ends with <</p>"           "<p>ends with &lt;</p>"
+    "a <"                          "a &lt;"))
+
+(deftest escape-stray-lt-keeps-what-github-keeps-as-html
+  (are [html] (= html (md/escape-stray-lt html))
+    "<p>if x <b and c> then y</p>"
+    "<p>a Vec<String> in prose</p>"
+    "<p>some <kbd>Ctrl</kbd> keys</p>"
+    "<p>see <a href=\"https://example.com\">https://example.com</a> now</p>"
+    "<p><img src='x.png' alt=\"a > b\"/></p>"
+    "<p>before <!-- hidden --> after</p>"
+    "<pre><code class=\"clojure\">&#40;&lt; a b&#41;</code></pre>"
+    "<h2 id=\"x\">X<a class=\"heading-anchor\" href=\"#x\" aria-label=\"Link to this section\"></a></h2>"))
+
+(deftest render-markdown-no-longer-swallows-text-after-a-stray-lt
+  ;; A browser opens a tag at "<y" and hides everything up to the next ">",
+  ;; so "compare x<y and stop." showed as just "compare x".
+  (let [html (md/render-markdown "compare x<y and stop.\n\nNext paragraph.\n")]
+    (is (str/includes? html "compare x&lt;y and stop."))
+    (is (str/includes? html "<p>Next paragraph.</p>")))
+  (testing "an html comment stays hidden, even in markdown-clj's mangled form"
+    (is (not (str/includes? (md/render-markdown "before <!-- hidden --> after\n")
+                            "&lt;!"))))
+  (testing "code spans were already escaped and are not escaped twice"
+    (is (str/includes? (md/render-markdown "use `Vec<T>` here\n")
+                       "<code>Vec&lt;T&gt;</code>"))))
