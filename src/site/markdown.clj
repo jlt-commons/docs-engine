@@ -255,9 +255,14 @@
    <?...?>), else a lone <. Non-capturing groups only, so str/replace hands
    the replacement fn a plain string. <![^>]*> also keeps markdown-clj's
    mangled comments (<!&ndash; x &ndash;>), which browsers hide as bogus
-   comments, hidden rather than turning them into visible text."
+   comments, hidden rather than turning them into visible text. A whole
+   <script> or <style> element comes first and is kept as one match: their
+   bodies are raw text where entities are not decoded, so an escaped < in
+   `if (a<b)` would break the code."
   (re-pattern
-   (str "<[A-Za-z][A-Za-z0-9-]*"
+   (str "<script\\b[^>]*>[\\s\\S]*?</script\\s*>"
+        "|<style\\b[^>]*>[\\s\\S]*?</style\\s*>"
+        "|<[A-Za-z][A-Za-z0-9-]*"
         "(?:\\s+[A-Za-z_:][A-Za-z0-9_.:-]*"
         "(?:\\s*=\\s*(?:[^\\s\"'=<>`]+|'[^']*'|\"[^\"]*\"))?)*"
         "\\s*/?>"

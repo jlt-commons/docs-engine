@@ -411,7 +411,11 @@
     "<p><img src='x.png' alt=\"a > b\"/></p>"
     "<p>before <!-- hidden --> after</p>"
     "<pre><code class=\"clojure\">&#40;&lt; a b&#41;</code></pre>"
-    "<h2 id=\"x\">X<a class=\"heading-anchor\" href=\"#x\" aria-label=\"Link to this section\"></a></h2>"))
+    "<h2 id=\"x\">X<a class=\"heading-anchor\" href=\"#x\" aria-label=\"Link to this section\"></a></h2>"
+    ;; script and style bodies are raw text: entities there are not decoded,
+    ;; so an escaped < would break the code.
+    "<script>if (a<b && c <= d) { go(); }</script>"
+    "<style>a < b { color: red }</style>"))
 
 (deftest render-markdown-no-longer-swallows-text-after-a-stray-lt
   ;; A browser opens a tag at "<y" and hides everything up to the next ">",
