@@ -48,17 +48,18 @@
    {:out :doc :home :site :index}. opts: :home-template? (ship a project
    homepage template), :assets? (ship an asset directory), :search (copied
    into the site map when given), :readme? (ship a README.md and no
-   guide/index.md, so the README is the homepage source). :index is the
+   guide/index.md, so the README is the homepage source), :readme-text
+   (that README's markdown, in place of the default). :index is the
    parsed search-documents.json, or nil when none was written."
   ([base] (build-fixture-site! base {}))
-  ([base {:keys [home-template? assets? diagram? mermaid-override readme? search no-h1?]}]
+  ([base {:keys [home-template? assets? diagram? mermaid-override readme? readme-text search no-h1?]}]
    (let [tmp       (fs/create-temp-dir {:prefix "jltc-site"})
          docs      (io/file (str tmp) "docs")
          guide     (io/file docs "guide")
          templates (io/file docs "templates")]
      (fs/create-dirs guide)
      (if readme?
-       (spit (io/file (str tmp) "README.md") "# Readme Title\n\n## Usage\n\nRun it.\n")
+       (spit (io/file (str tmp) "README.md") (or readme-text "# Readme Title\n\n## Usage\n\nRun it.\n"))
        (spit (io/file guide "index.md")
              (if diagram?
                "# Intro\n\nHello.\n\n```mermaid\nflowchart LR\n  a --> b\n```\n"
@@ -182,6 +183,23 @@
 
 (deftest configured-asset-dirs-are-copied-under-their-own-name
   (let [{:keys [out]} (build-fixture-site! "/some-lib" {:assets? true})]
+    (is (fs/exists? (io/file out "media" "x.gif")))))
+
+(deftest a-readme-homepage-points-asset-links-at-the-copied-directory
+  ;; A README's paths are right on GitHub (docs/media/x.gif from the repo
+  ;; root), but the build copies docs/media to <site-base>/media, so the
+  ;; homepage rendered from the README needs the site's path.
+  (let [{:keys [home out]}
+        (build-fixture-site! "/some-lib"
+                             {:readme? true :assets? true
+                              :readme-text (str "# R\n\n<p align=\"center\"><img src=\"docs/media/x.gif\"></p>\n\n"
+                                                "![a](./docs/media/x.gif) [l](docs/media/x.gif) ![o](docs/other/y.png)\n")})]
+    (testing "raw HTML and markdown images, with or without ./, and links"
+      (is (= 2 (count (re-seq #"src=\"/some-lib/media/x\.gif\"" home))))
+      (is (str/includes? home "href='/some-lib/media/x.gif'"))
+      (is (not (str/includes? home "docs/media/"))))
+    (testing "a path the build does not copy is left as written"
+      (is (str/includes? home "src=\"docs/other/y.png\"")))
     (is (fs/exists? (io/file out "media" "x.gif")))))
 
 (deftest a-missing-asset-dir-warns-instead-of-failing-the-build

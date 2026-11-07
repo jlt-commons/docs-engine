@@ -283,6 +283,34 @@
   [html]
   (str/replace html html-or-stray-lt (fn [m] (if (= m "<") "&lt;" m))))
 
+(def ^:private alert-titles
+  {"note" "Note" "tip" "Tip" "important" "Important" "warning" "Warning" "caution" "Caution"})
+
+(def ^:private alert-blockquote
+  ;; markdown-clj renders `> [!WARNING]` and the lines after it as ONE
+  ;; paragraph, so the marker is the start of the blockquote's first <p>.
+  #"(?is)<blockquote>\s*<p>\s*\[!(note|tip|important|warning|caution)\]\s*(.*?)</blockquote>")
+
+(defn github-alerts
+  "Renders GitHub's alert blockquotes (`> [!NOTE]`, TIP, IMPORTANT, WARNING,
+   CAUTION) the way GitHub does: a div.markdown-alert.markdown-alert-<kind>
+   with a p.markdown-alert-title naming the kind, instead of a plain
+   blockquote that shows the literal [!WARNING]. Any other blockquote is left
+   alone, and so is a marker inside code, which markdown-clj has already
+   escaped.
+
+   Two differences from GitHub, both from working on rendered HTML: a marker
+   followed by text on its own line (`> [!TIP] text`) becomes an alert here and
+   stays a quote there, and a blockquote nested inside an alert ends the alert
+   at the inner quote's close."
+  [html]
+  (str/replace html alert-blockquote
+               (fn [[_ kind body]]
+                 (let [k (str/lower-case kind)]
+                   (str "<div class=\"markdown-alert markdown-alert-" k "\">"
+                        "<p class=\"markdown-alert-title\">" (alert-titles k) "</p>"
+                        "<p>" body "</div>")))))
+
 (defn render-markdown
   "markdown -> HTML. Does NOT use markdown-clj's own :heading-anchors —
    its id-generation embeds literal entity text (&#95; etc.) in id
@@ -294,13 +322,15 @@
    Runs escape-intraword-underscores then unwrap-hard-wraps first (see
    their docstrings) so snake_case identifiers don't get misread as
    emphasis and hard-wrapped source paragraphs/list-items don't trip
-   markdown-clj's line-oriented parsing."
+   markdown-clj's line-oriented parsing. GitHub alert blockquotes become
+   callouts last (github-alerts)."
   [markdown-text]
-  (escape-stray-lt
-   (md/md-to-html-string (-> markdown-text
-                             escape-intraword-underscores
-                             unwrap-hard-wraps)
-                         :code-style (fn [lang] (str "class=\"" lang "\"")))))
+  (github-alerts
+   (escape-stray-lt
+    (md/md-to-html-string (-> markdown-text
+                              escape-intraword-underscores
+                              unwrap-hard-wraps)
+                          :code-style (fn [lang] (str "class=\"" lang "\""))))))
 
 (defn assign-heading-ids
   "Adds a unique id= to every <h1>/<h2>/<h3>, computed from its OWN
