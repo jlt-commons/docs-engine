@@ -429,3 +429,31 @@
   (testing "code spans were already escaped and are not escaped twice"
     (is (str/includes? (md/render-markdown "use `Vec<T>` here\n")
                        "<code>Vec&lt;T&gt;</code>"))))
+
+(deftest github-alerts-render-every-kind-as-a-callout
+  ;; GitHub draws `> [!WARNING]` as a titled callout; a plain blockquote
+  ;; showed the literal marker.
+  (are [marker kind title]
+       (let [html (md/render-markdown (str "> " marker "\n> **Bold** body\n"))]
+         (and (str/includes? html (str "<div class=\"markdown-alert markdown-alert-" kind "\">"))
+              (str/includes? html (str "<p class=\"markdown-alert-title\">" title "</p>"))
+              (str/includes? html "<strong>Bold</strong> body")
+              (not (str/includes? html "[!"))
+              (not (str/includes? html "blockquote"))))
+    "[!NOTE]"      "note"      "Note"
+    "[!TIP]"       "tip"       "Tip"
+    "[!IMPORTANT]" "important" "Important"
+    "[!WARNING]"   "warning"   "Warning"
+    "[!CAUTION]"   "caution"   "Caution"
+    "[!note]"      "note"      "Note"))
+
+(deftest github-alerts-leave-other-quotes-and-code-alone
+  (testing "a blockquote without a marker stays a blockquote"
+    (is (str/includes? (md/render-markdown "> just a quote\n") "<blockquote>")))
+  (testing "an unknown marker stays a blockquote"
+    (is (str/includes? (md/render-markdown "> [!DANGER]\n> x\n") "[!DANGER]")))
+  (testing "a marker inside a fenced code block is code, not an alert"
+    (let [html (md/render-markdown "```\n> [!NOTE]\n> x\n```\n")]
+      ;; markdown-clj writes the brackets in code as entities
+      (is (not (str/includes? html "markdown-alert")))
+      (is (str/includes? html "<pre><code>&gt; &#91;!NOTE&#93;")))))

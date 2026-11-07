@@ -573,6 +573,28 @@ nav.toc {
   color: var(--text-dim);
 }
 
+/* GitHub alerts (> [!NOTE] and friends, site.markdown/github-alerts). Each
+   kind borrows a syntax-highlighting token, which already has a light and a
+   dark value; the fallback is the dark one, for the moment before the head
+   script sets data-theme. */
+.doc-content .markdown-alert {
+  --alert-color: var(--code-attr, #79c0ff);
+  border-left: 3px solid var(--alert-color);
+  margin: 0 0 1.25rem;
+  padding: 0.25rem 0 0.25rem 1rem;
+}
+.doc-content .markdown-alert-tip { --alert-color: var(--code-name, #7ee787); }
+.doc-content .markdown-alert-important { --alert-color: var(--code-title, #d2a8ff); }
+.doc-content .markdown-alert-warning { --alert-color: var(--code-builtin, #ffa657); }
+.doc-content .markdown-alert-caution { --alert-color: var(--code-keyword, #ff7b72); }
+.doc-content .markdown-alert > p { margin: 0 0 0.5rem; }
+.doc-content .markdown-alert > p:last-child { margin-bottom: 0; }
+.doc-content .markdown-alert-title {
+  color: var(--alert-color);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
 .doc-content hr {
   border: none;
   border-top: 1px solid var(--border);

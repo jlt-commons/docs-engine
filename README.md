@@ -70,6 +70,16 @@ Leave `:base-path` as `""` only for a site served at a domain root.
 into a published site, so a project that could write `["../../.ssh"]` would
 publish it.
 
+An entry is copied to the site root under its own name, so `docs/images` ends
+up at `<base-path>/images`. When the homepage is rendered from `README.md`, its
+`src` and `href` values that start with `docs/<entry>/` (or `./docs/<entry>/`)
+are rewritten to that copy. The README's images then show on the site and on
+GitHub alike, and a path into a directory that isn't listed stays as written.
+
+Markdown pages get GitHub's alerts too. A blockquote opening with `[!NOTE]`,
+`[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` or `[!CAUTION]` renders as a titled
+callout.
+
 ## Building
 
 ```bash
