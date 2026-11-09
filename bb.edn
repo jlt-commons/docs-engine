@@ -39,7 +39,7 @@
          ;; unchanged (bb already has real java.time; this just adds tick's
          ;; API on top of it).
          io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                   :git/sha "abeee49974c2c4efa2fa75c96d9a379822c6815f"}}
+                                   :git/sha "b6d64a9ea4a71c6d40f66d0c3c9c4fff28f1bf8c"}}
  :tasks
  {;; tick.core first, unconditionally -- see the io.github.jolt-lang/time
   ;; comment above :deps. Everything after it in this list, and every

@@ -1,7 +1,7 @@
 (ns site.core-test
   (:require [babashka.fs :as fs]
             [clojure.java.io :as io]
-            [cheshire.core :as json]
+            [clojure.data.json :as json]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [site.core :as core]))
@@ -90,7 +90,7 @@
        {:out   (:output-dir site)
         :site  site
         :index (let [f (io/file (:output-dir site) "search-documents.json")]
-                 (when (fs/exists? f) (json/parse-string (slurp f))))
+                 (when (fs/exists? f) (json/read-str (slurp f))))
         :doc   (when-not readme? (slurp (io/file (:output-dir site) "guide" "index.html")))
         :plain (slurp (io/file (:output-dir site) "guide" "plain.html"))
         :home  (slurp (io/file (:output-dir site) "index.html"))}))))

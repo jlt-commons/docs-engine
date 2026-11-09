@@ -1,5 +1,5 @@
 (ns site.search-test
-  (:require [cheshire.core :as json]
+  (:require [clojure.data.json :as json]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [site.markdown :as md]
@@ -16,7 +16,7 @@
                "é → ü"
                ""]]
       (is (= [{"text" s}]
-             (json/parse-string (search/->json [{:text s}]))))))
+             (json/read-str (search/->json [{:text s}]))))))
   (testing "empty seq produces empty array"
     (is (= "[]" (search/->json []))))
   (testing "U+2028 LINE SEPARATOR is escaped as \\u2028, not raw character"
