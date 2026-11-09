@@ -4,12 +4,8 @@
    library involved at all; this namespace is the thin wrapper around
    org.httpkit.server that turns it into a running server.
 
-   Jolt never loads this file. site/serve.jolt is the jolt-native twin
-   (ring-chez.adapter instead of http-kit) — jolt's require resolves
-   <ns>.jolt before <ns>.clj (see the docs-engine README, \"Local preview
-   server: two hosts, one namespace\"), so the two never collide, and
-   babashka/JVM never see the .jolt file at all, since their own require
-   only ever looks for .clj/.cljc."
+   http-kit isn't available under jolt, so `serve` is bb-only; no other
+   task requires this namespace."
   (:require [org.httpkit.server :as hk]
             [site.core :as core]))
 
