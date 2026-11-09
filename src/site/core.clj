@@ -379,13 +379,12 @@
 ;;
 ;; Everything below builds a plain Ring handler `(fn [req]) -> {:status
 ;; :headers :body}` and touches no HTTP-server library at all, so it costs
-;; build/clean/test nothing. site.serve (bb/JVM) and site.serve.jolt (jolt)
-;; are the two thin wrappers that actually bind a port, each requiring the
-;; one HTTP-server library their own host has: org.httpkit.server for
-;; bb/JVM, ring-chez.adapter for jolt. Splitting it this way is what makes
-;; build/clean/test loadable under jolt at all — org.httpkit.server isn't
-;; resolvable there, and previously every task here required it via this
-;; namespace regardless of whether it ever started a server.
+;; build/clean/test nothing. site.serve is the thin wrapper that actually
+;; binds a port, with org.httpkit.server, so `serve` runs under bb only.
+;; Splitting it this way is what makes build/clean/test loadable under jolt
+;; at all — org.httpkit.server isn't resolvable there, and previously every
+;; task here required it via this namespace regardless of whether it ever
+;; started a server.
 
 (defn- content-type [path]
   (cond

@@ -3,9 +3,9 @@
 The static-site generator behind jlt-commons project documentation. A project
 writes markdown; this turns it into a site that GitHub Pages serves.
 
-It is a small babashka program, and `build`/`clean` also run under `jolt`
-(jolt reads `bb.edn` tasks directly). `test` and `serve` still need `bb`:
-jolt doesn't bundle `clojure.test` or `http-kit`. External dependencies
+It is a small babashka program, and `build`, `clean` and `test` also run
+under `jolt` (jolt reads `bb.edn` tasks directly). `serve` still needs `bb`:
+it binds the port with `http-kit`, which jolt doesn't have. External dependencies
 (`markdown-clj`, `selmer`, and the `jolt-lang/yaml`/`jolt-lang/time` shims
 that make those two resolve under jolt) are fetched on first run.
 
@@ -85,15 +85,15 @@ callout.
 ```bash
 jolt run build ../your-project     # generate ../your-project/_site/
 jolt run clean ../your-project     # delete the build output
-bb test                            # the test suite
+jolt test                          # the test suite (or bb test)
 bb serve ../your-project           # build, then serve, honouring :base-path
 bb serve ../your-project 4000
 ```
 
-`build`/`clean` run under either tool. Under `jolt` it's `jolt run <task>`,
-not bare `jolt <task>`: `build` collides with jolt's own native
-`build -m NS` compiler subcommand. `test` and `serve` stay `bb`-only,
-since jolt doesn't bundle `clojure.test` or `http-kit`.
+`build`, `clean` and `test` run under either tool. Under `jolt` it's
+`jolt run <task>`, not bare `jolt <task>`: `build` collides with jolt's own
+native `build -m NS` compiler subcommand. `serve` stays `bb`-only, since it
+uses `http-kit`.
 
 `_site/` is generated. Add it to the project's `.gitignore`.
 
