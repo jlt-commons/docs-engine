@@ -303,13 +303,13 @@
   ;; this pins the JVM-side behavior this function must keep matching).
   (testing "preamble before the first heading becomes its own leading chunk"
     (is (= ["pre" "<h2 id=\"a\">A</h2>mid" "<h2 id=\"b\">B</h2>end"]
-           (md/split-before-h2-headings "pre<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>end"))))
+           (#'md/split-before-h2-headings "pre<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>end"))))
   (testing "no preamble when the body starts exactly at a heading"
     (is (= ["<h2 id=\"a\">A</h2>mid" "<h2 id=\"b\">B</h2>"]
-           (md/split-before-h2-headings "<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>"))))
+           (#'md/split-before-h2-headings "<h2 id=\"a\">A</h2>mid<h2 id=\"b\">B</h2>"))))
   (testing "no headings at all returns the whole string as one chunk"
     (is (= ["just prose, no headings"]
-           (md/split-before-h2-headings "just prose, no headings")))))
+           (#'md/split-before-h2-headings "just prose, no headings")))))
 
 (deftest collapse-long-sections-leaves-short-pages-untouched
   ;; Below collapse-min-long-sections (5) the page reads as prose, and
