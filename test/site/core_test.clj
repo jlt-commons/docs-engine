@@ -185,6 +185,28 @@
   (let [{:keys [out]} (build-fixture-site! "/some-lib" {:assets? true})]
     (is (fs/exists? (io/file out "media" "x.gif")))))
 
+(deftest a-readme-homepage-points-guide-links-at-the-built-pages
+  ;; A README links to docs/guide/x.md, which is right on GitHub. The site
+  ;; has that page at <site-base>/guide/x.html, so the homepage rendered
+  ;; from the README needs the site's path or every such link is a 404.
+  (let [{:keys [home]}
+        (build-fixture-site! "/some-lib"
+                             {:readme? true
+                              :readme-text (str "# R\n\n[a](docs/guide/usage.md) [b](./docs/guide/usage.md#run) "
+                                                "[c](docs/guide/deep/page.md) [d](bench/README.md) "
+                                                "[e](https://example.com/docs/guide/x.md) "
+                                                "<a href=\"docs/guide/usage.md\">raw</a>\n")})]
+    (testing "plain, with ./ and a fragment, nested, and raw HTML"
+      (is (str/includes? home "href='/some-lib/guide/usage.html'"))
+      (is (str/includes? home "href='/some-lib/guide/usage.html#run'"))
+      (is (str/includes? home "href='/some-lib/guide/deep/page.html'"))
+      (is (str/includes? home "href=\"/some-lib/guide/usage.html\"")))
+    (testing "what isn't a guide page is left as written"
+      (is (str/includes? home "bench/README.md"))
+      (is (str/includes? home "https://example.com/docs/guide/x.md")))
+    (testing "no guide link is left pointing at the markdown"
+      (is (nil? (re-find #"href=[\"']\.?/?docs/guide/" home))))))
+
 (deftest a-readme-homepage-points-asset-links-at-the-copied-directory
   ;; A README's paths are right on GitHub (docs/media/x.gif from the repo
   ;; root), but the build copies docs/media to <site-base>/media, so the

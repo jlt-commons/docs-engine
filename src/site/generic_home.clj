@@ -45,6 +45,18 @@
           html
           asset-names))
 
+(defn rewrite-readme-guide-links
+  "A README links to its guide pages as GitHub needs them, docs/guide/x.md
+   from the repository root. The site has each one at
+   <site-base>/guide/x.html, so on a homepage rendered from the README those
+   links were dead. Rewrites each href that starts with docs/guide/ or
+   ./docs/guide/ and names a .md file, in either quote style, keeping a
+   #fragment. A link to anything else under docs/ is left as it was."
+  [html site-base]
+  (str/replace html
+               #"href=([\"'])(?:\./)?docs/guide/([^\"'#]+)\.md(#[^\"']*)?\1"
+               (fn [[_ q path frag]] (str "href=" q site-base "/guide/" path ".html" frag q))))
+
 (defn rendered-source
   "What the homepage's source document rendered to, so a caller can both
    build the page and index it without rendering the markdown twice.
@@ -71,7 +83,8 @@
    guide/-prefixed. README-sourced content keeps whatever the default
    rewrite produced, since its links are relative to the repository root,
    except that links into a configured asset directory point at the copy the
-   build makes (rewrite-readme-asset-links).
+   build makes (rewrite-readme-asset-links) and links to guide pages at the
+   pages the build writes (rewrite-readme-guide-links).
 
    The three-arity form takes an already-computed rendered-source, for a
    caller that needs the same render for something else."
@@ -80,9 +93,10 @@
    (let [content (case source
                    nil          (str "<h1>" (:site-title site-ctx) "</h1><p>No documentation yet.</p>")
                    :guide-index (prefix-guide-links body-html)
-                   (rewrite-readme-asset-links body-html
-                                               (map fs/file-name (:asset-dirs project))
-                                               (:site-base site-ctx)))]
+                   (-> body-html
+                       (rewrite-readme-asset-links (map fs/file-name (:asset-dirs project))
+                                                   (:site-base site-ctx))
+                       (rewrite-readme-guide-links (:site-base site-ctx))))]
      (selmer/render-file "generic-home.html"
                          (merge site-ctx
                                 {:page    "home"
