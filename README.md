@@ -76,6 +76,12 @@ up at `<base-path>/images`. When the homepage is rendered from `README.md`, its
 are rewritten to that copy. The README's images then show on the site and on
 GitHub alike, and a path into a directory that isn't listed stays as written.
 
+The same homepage's links to guide pages are rewritten too: `docs/guide/x.md`
+(or `./docs/guide/x.md`, with or without a `#fragment`) becomes
+`<base-path>/guide/x.html`, the page the build writes. A link to any other file
+in the repository stays as written and has no page on the site, so give it a
+full GitHub URL if the homepage should reach it.
+
 Markdown pages get GitHub's alerts too. A blockquote opening with `[!NOTE]`,
 `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]` or `[!CAUTION]` renders as a titled
 callout.
