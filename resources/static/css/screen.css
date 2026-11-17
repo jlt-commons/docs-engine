@@ -635,6 +635,15 @@ nav.toc {
                                <pre>, which scrolls instead) */
 }
 
+/* In a table cell, overflow-wrap: anywhere lets the browser squeeze a code
+   column until identifiers break mid-word. Keep each code span on one line
+   there; the table scrolls (overflow-x: auto) when it gets too wide. */
+.doc-content td code,
+.doc-content th code {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
 /* ---- Code blocks ---- */
 
 pre {
