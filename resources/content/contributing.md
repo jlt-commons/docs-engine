@@ -50,8 +50,8 @@ which is worth caring about if you intend to be one of them.
 
 ---
 
-This is this project's default Contributing page, shipped by
-[docs-engine](https://github.com/jlt-commons/docs-engine) so every
-jlt-commons project's site carries the same one without copying it around.
-A project with something project-specific to add writes its own
+This is the default Contributing page that
+[docs-engine](https://github.com/jlt-commons/docs-engine) ships, so every
+jlt-commons project's site has the same one without keeping its own copy.
+A project with something of its own to add writes
 `docs/guide/contributing.md`, which replaces this page entirely.
