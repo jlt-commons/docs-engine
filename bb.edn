@@ -20,16 +20,18 @@
          ;; heading fix). So parse-yaml-metadata-headers, and therefore
          ;; clj-yaml.core/parse-string, is unreachable through this
          ;; pipeline on any input -- verified by reading markdown-clj
-         ;; 1.11.4's own transformers.cljc, not assumed.
-         markdown-clj/markdown-clj {:mvn/version "1.11.4"
+         ;; 1.11.4's own transformers.cljc, not assumed. Re-checked on 1.12.14:
+         ;; parse-metadata-headers still takes the YAML branch only on a
+         ;; first line matching ---\s*.
+         markdown-clj/markdown-clj {:mvn/version "1.12.14"
                                     :exclusions [clj-commons/clj-yaml]}
          io.github.jolt-lang/yaml {:git/url "https://github.com/jolt-lang/yaml.git"
-                                   :git/sha "972b93c01685a6c02e40bae293ad51c78bcc743f"}
+                                   :git/sha "baeb011f040ea8167917b1d600ac601bb746fea2"}
          ;; babashka bundles selmer as a built-in, so this project never
          ;; needed to declare it before. jolt doesn't bundle it the same
          ;; way -- an explicit :mvn/version is what makes `jolt run build`
          ;; able to resolve selmer.parser at all (see docs-engine#3).
-         selmer/selmer {:mvn/version "1.12.59"}
+         selmer/selmer {:mvn/version "1.13.5"}
          ;; Selmer's date filters reference java.time.format.FormatStyle at
          ;; namespace-load time (see docs-engine#3). jolt has no built-in
          ;; java.time shim, but requiring jolt-lang/time installs one, and
@@ -39,7 +41,7 @@
          ;; unchanged (bb already has real java.time; this just adds tick's
          ;; API on top of it).
          io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                   :git/sha "06dfc4e744f256ba2c3cdfc611c45845c3269908"}}
+                                   :git/sha "cdd785069e0e08a16c1ea9aae60f9532de21fad8"}}
  :tasks
  {;; tick.core first, unconditionally -- see the io.github.jolt-lang/time
   ;; comment above :deps. Everything after it in this list, and every
