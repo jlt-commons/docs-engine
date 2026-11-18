@@ -635,6 +635,24 @@ nav.toc {
                                <pre>, which scrolls instead) */
 }
 
+/* In a table cell, overflow-wrap: anywhere lets the browser squeeze a code
+   column until identifiers break mid-word. Keep each code span on one line
+   there; the table scrolls (overflow-x: auto) when it gets too wide. */
+.doc-content td code,
+.doc-content th code {
+  overflow-wrap: normal;
+  white-space: nowrap;
+}
+
+/* On a phone the unbreakable code columns can take the whole width, which
+   leaves a prose column one word wide. A minimum cell width keeps the prose
+   readable, and the table scrolls sideways instead. */
+@media (max-width: 760px) {
+  .doc-content table:has(td code) td {
+    min-width: 14rem;
+  }
+}
+
 /* ---- Code blocks ---- */
 
 pre {
