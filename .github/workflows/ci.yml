@@ -69,6 +69,37 @@ jobs:
           grep -q 'href="/jolt-project/css/screen.css"' "$root/_site/guide/index.html" \
             || { echo "jolt build lost the base path"; exit 1; }
 
+      # serve binds with ring-chez-adapter under jolt (serve.jolt) and with
+      # http-kit under bb (serve.clj). This starts the jolt one on a free port
+      # and checks it answers under the base path, 404s outside it, and
+      # returns a binary asset byte for byte.
+      - name: Serve under jolt
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)/serve-project"
+          mkdir -p "$root/docs/guide" "$root/docs/media"
+          printf '# Serve\n\nServed by jolt.\n' > "$root/docs/guide/index.md"
+          printf '{:base-path "/serve-project" :asset-dirs ["media"]}\n' > "$root/docs/site.edn"
+          head -c 4096 /dev/urandom > "$root/docs/media/blob.bin"
+          port="$(python3 -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+          jolt run serve "$root" "$port" > serve.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 120); do
+            grep -q '^Serving ' serve.log && break
+            kill -0 "$pid" 2>/dev/null || { cat serve.log; echo "jolt run serve exited"; exit 1; }
+            sleep 1
+          done
+          grep -q '^Serving ' serve.log || { cat serve.log; echo "jolt run serve never started"; exit 1; }
+          base="http://127.0.0.1:$port"
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/serve-project/")" = 200 \
+            || { echo "homepage not served under the base path"; exit 1; }
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$base/elsewhere/")" = 404 \
+            || { echo "a path outside the base path was not a 404"; exit 1; }
+          curl -s "$base/serve-project/media/blob.bin" | cmp - "$root/docs/media/blob.bin" \
+            || { echo "binary asset changed in transit"; exit 1; }
+          echo "jolt run serve works"
+
       # The tests build sites from fixtures, which proves the renderer but
       # not that the engine works against a real project laid out on disk.
       # This builds one end to end and checks the properties that actually

@@ -41,7 +41,12 @@
          ;; unchanged (bb already has real java.time; this just adds tick's
          ;; API on top of it).
          io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                   :git/sha "cdd785069e0e08a16c1ea9aae60f9532de21fad8"}}
+                                   :git/sha "cdd785069e0e08a16c1ea9aae60f9532de21fad8"}
+         ;; The HTTP server behind `serve` under jolt. Only site/serve.jolt
+         ;; requires it, and bb never loads that file (bb's serve.clj uses
+         ;; http-kit, which bb bundles).
+         io.github.jolt-lang/ring-chez-adapter {:git/url "https://github.com/jolt-lang/ring-chez-adapter.git"
+                                                :git/sha "387cf67ea7b6a8573c6ee6abca6026a45bc3b6bf"}}
  :tasks
  {;; tick.core first, unconditionally -- see the io.github.jolt-lang/time
   ;; comment above :deps. Everything after it in this list, and every
@@ -53,20 +58,19 @@
   (def project-dir
     (fn []
       (or (first *command-line-args*)
-          (do (println "Usage: bb <task> <path-to-project> [...]")
-              (println "  e.g. bb serve ../raylib-jlt")
+          (do (println "Usage: jolt run <task> <path-to-project> [...]")
+              (println "  e.g. jolt run serve ../raylib-jlt")
               (System/exit 1)))))
 
   info  {:doc "What this is and how to point it at a project"
          :task (do
                  (println "docs-engine — the jlt-commons documentation site generator\n")
-                 (println "  jolt run build <project>       generate <project>/_site/")
-                 (println "  jolt run clean <project>       delete <project>/_site/")
-                 (println "  jolt test                      run the test suite")
-                 (println "  bb serve <project> [port]      build, then serve at localhost:3000\n")
-                 (println "build/clean/test run under either tool (jolt run <task>, not bare jolt <task>:")
-                 (println "build collides with jolt's own build -m NS subcommand). serve stays")
-                 (println "bb-only: it uses http-kit.\n")
+                 (println "  jolt run build <project>         generate <project>/_site/")
+                 (println "  jolt run clean <project>         delete <project>/_site/")
+                 (println "  jolt run test                    run the test suite")
+                 (println "  jolt run serve <project> [port]  build, then serve at localhost:3000\n")
+                 (println "Use jolt run <task>, not bare jolt <task>: build collides with jolt's own")
+                 (println "build -m NS subcommand. Every task also runs under babashka as bb <task>.\n")
                  (println "A project configures itself in docs/site.edn. See README.md."))}
 
   test  {:doc "Run the full test suite"
@@ -78,15 +82,15 @@
          :task (let [{:keys [fail error]} (t/run-tests 'site.markdown-test 'site.project-test 'site.core-test 'site.search-test)]
                  (when (pos? (+ fail error)) (System/exit 1)))}
 
-  build {:doc "Generate a project's site into its _site/ (bb build <project>, or jolt run build <project>)"
+  build {:doc "Generate a project's site into its _site/ (jolt run build <project>)"
          :requires ([site.core :as core])
          :task (core/generate! (project/resolve-project (project-dir)))}
 
-  clean {:doc "Delete a project's _site/ build output (bb clean <project>, or jolt run clean <project>)"
+  clean {:doc "Delete a project's _site/ build output (jolt run clean <project>)"
          :requires ([site.core :as core])
          :task (core/clean! (project/resolve-project (project-dir)))}
 
-  serve {:doc "Build, then serve a project locally (bb serve <project> [port], default 3000)"
+  serve {:doc "Build, then serve a project locally (jolt run serve <project> [port], default 3000)"
          :requires ([site.serve :as serve])
          :task (serve/serve! (project/resolve-project (project-dir))
                              (second *command-line-args*))}}}

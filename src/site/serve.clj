@@ -4,8 +4,9 @@
    library involved at all; this namespace is the thin wrapper around
    org.httpkit.server that turns it into a running server.
 
-   http-kit isn't available under jolt, so `serve` is bb-only; no other
-   task requires this namespace."
+   Under jolt, site/serve.jolt replaces this file and binds with
+   ring-chez.adapter instead. No task other than `serve` requires this
+   namespace."
   (:require [org.httpkit.server :as hk]
             [site.core :as core]))
 
