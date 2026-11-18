@@ -179,13 +179,13 @@ after `index.md`, even without writing one. It comes from the engine's own
 `resources/content/contributing.md` and is treated like `base.html` or
 `404.html`, as shared chrome. How to open an issue against a jlt-commons
 project has the same answer everywhere, so the page lives in one place
-instead of drifting across a copy in every project.
+rather than in a copy per project that drifts.
 
 A project with something project-specific to say (a note on known-broken
 areas, its own escalation path, anything beyond the shared etiquette)
 writes its own `docs/guide/contributing.md`. That file is discovered the
 same way as any other guide page, and it replaces the engine's default
-outright. The two are never merged.
+outright.
 
 This is the general shape for any future default page: the engine's
 `discover-doc-ids` adds its own basenames to a project's guide-dir root
