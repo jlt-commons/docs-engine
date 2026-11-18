@@ -1,13 +1,9 @@
 (ns site.serve
-  "The local preview server's bb/JVM half: the one function that actually
-   binds a port. site.core builds the Ring handler with no HTTP-server
-   library involved at all; this namespace is the thin wrapper around
-   org.httpkit.server that turns it into a running server.
-
-   Under jolt, site/serve.jolt replaces this file and binds with
-   ring-chez.adapter instead. No task other than `serve` requires this
-   namespace."
-  (:require [org.httpkit.server :as hk]
+  "The local preview server: the one function that actually binds a port.
+   site.core builds the Ring handler; this namespace binds it with
+   ring-chez.adapter, which runs over jolt's own sockets. No task other
+   than `serve` requires this namespace."
+  (:require [ring-chez.adapter :as adapter]
             [site.core :as core]))
 
 (defn serve!
@@ -18,8 +14,9 @@
   (let [port       (Integer/parseInt (or port-str "3000"))
         output-dir (:output-dir project)
         base       (core/base-path (:base-path project))]
+    ;; ring-chez binds 127.0.0.1 by default; :host says so explicitly, since
+    ;; this is a local-only preview server.
+    (adapter/run-server (core/make-static-handler output-dir base)
+                        {:port port :host "127.0.0.1"})
     (println (str "Serving " output-dir " at http://localhost:" port base "/"))
-    ;; :ip "127.0.0.1" — local-only dev preview server; without an
-    ;; explicit :ip, http-kit binds all network interfaces by default.
-    (hk/run-server (core/make-static-handler output-dir base) {:port port :ip "127.0.0.1"})
     @(promise)))

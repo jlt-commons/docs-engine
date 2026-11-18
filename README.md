@@ -4,10 +4,10 @@ The static-site generator behind jlt-commons project documentation. A project
 writes markdown, and this turns it into a site that GitHub Pages serves.
 
 It is a small Clojure program that runs on `jolt`, which reads the tasks in
-`bb.edn` directly. External dependencies (`markdown-clj`, `selmer`, the
+`deps.edn` directly. External dependencies (`markdown-clj`, `selmer`, the
 `jolt-lang/yaml`/`jolt-lang/time` shims that make those two resolve under
 jolt, and `ring-chez-adapter` for the preview server) are fetched on first
-run. Every task also still runs under babashka as `bb <task>`.
+run.
 
 ## The idea
 
@@ -98,8 +98,7 @@ jolt run serve ../your-project 4000
 
 Use `jolt run <task>`, not bare `jolt <task>`, because `build` collides with
 jolt's own native `build -m NS` compiler subcommand. The preview server binds
-with `ring-chez-adapter` under jolt and with `http-kit` under bb, so
-`bb serve` works the same way.
+with `ring-chez-adapter`.
 
 `_site/` is generated. Add it to the project's `.gitignore`.
 

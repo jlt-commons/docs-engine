@@ -14,9 +14,9 @@ on:
 permissions:
   contents: read
 
-# The README says build, clean and test run under jolt as well as bb, so CI
-# runs them under both. Pinned to a release so an overnight jolt change can't
-# turn a docs-engine PR red; workflow_dispatch can try another version.
+# The engine runs on jolt only. Pinned to a release so an overnight jolt
+# change can't turn a docs-engine PR red; workflow_dispatch can try another
+# version.
 env:
   JOLT_VERSION: ${{ inputs.jolt-version || '0.8.27' }}
 
@@ -32,14 +32,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install babashka
-        uses: DeLaGuardo/setup-clojure@13.6.1
-        with:
-          bb: latest
-
-      - name: Test
-        run: bb test
-
       # The prebuilt jolt binary is self-contained and lands in ~/.local/bin.
       # The version comes in through env, not interpolated into the script,
       # so the dispatch input can't inject shell.
@@ -52,10 +44,10 @@ jobs:
             | bash -s -- --version "$JOLT_VERSION"
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
-      - name: Test under jolt
+      - name: Test
         run: |
           jolt --version
-          jolt test
+          jolt run test
 
       - name: Build under jolt
         run: |
@@ -69,8 +61,7 @@ jobs:
           grep -q 'href="/jolt-project/css/screen.css"' "$root/_site/guide/index.html" \
             || { echo "jolt build lost the base path"; exit 1; }
 
-      # serve binds with ring-chez-adapter under jolt (serve.jolt) and with
-      # http-kit under bb (serve.clj). This starts the jolt one on a free port
+      # serve binds with ring-chez-adapter. This starts it on a free port
       # and checks it answers under the base path, 404s outside it, and
       # returns a binary asset byte for byte.
       - name: Serve under jolt
@@ -118,7 +109,7 @@ jobs:
             > "$root/docs/templates/home.html"
           printf 'GIF89a' > "$root/docs/media/x.gif"
 
-          bb build "$root"
+          jolt run build "$root"
 
           out="$root/_site"
           test -f "$out/index.html"          || { echo "no homepage generated"; exit 1; }
