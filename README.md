@@ -1,7 +1,7 @@
 # docs-engine
 
 The static-site generator behind jlt-commons project documentation. A project
-writes markdown; this turns it into a site that GitHub Pages serves.
+writes markdown, and this turns it into a site that GitHub Pages serves.
 
 It is a small babashka program, and `build`, `clean` and `test` also run
 under `jolt` (jolt reads `bb.edn` tasks directly). `serve` still needs `bb`:
@@ -12,9 +12,9 @@ that make those two resolve under jolt) are fetched on first run.
 ## The idea
 
 A project keeps its own docs, its own config and its own homepage. The engine
-keeps the rendering. Nothing about a project lives in this repository, which
-matters in an organization where the person maintaining a project is usually not
-the person maintaining the engine.
+keeps the rendering. Nothing about a project lives in this repository, because
+in this organization the person maintaining a project is usually not the person
+maintaining the engine.
 
 Each project's CI checks this repo out at a pinned tag, builds, and deploys to
 that project's own Pages site. No repository ever pushes into another, so no
@@ -46,11 +46,11 @@ Then `docs/site.edn`:
  :home-template "home.html"}
 ```
 
-**`:base-path` is the one that bites.** A project site is served at
+`:base-path` is the key people get wrong. A project site is served at
 `jlt-commons.github.io/your-project/`. Leave the base path out and every
 stylesheet, script and nav link resolves against the *organization* site
-instead. The page still renders, wearing the wrong clothes, which is what makes
-it easy to ship. `site.core-test` covers it.
+instead. The page still renders, just with the wrong styles, so the mistake is
+easy to ship. `site.core-test` covers it.
 
 Leave `:base-path` as `""` only for a site served at a domain root.
 
@@ -66,9 +66,9 @@ Leave `:base-path` as `""` only for a site served at a domain root.
 | `:search` | `true` | `false` turns off the search index, the nav search box and the script tag |
 
 `:asset-dirs` is an allowlist, and each entry names one directory directly under
-`docs/`. No separators, no leading dot, no `..`. This decides what gets copied
-into a published site, so a project that could write `["../../.ssh"]` would
-publish it.
+`docs/`, with no separators, no leading dot and no `..`. The list decides what
+gets copied into a published site, so a project that could write
+`["../../.ssh"]` would publish it.
 
 An entry is copied to the site root under its own name, so `docs/images` ends
 up at `<base-path>/images`. When the homepage is rendered from `README.md`, its
@@ -108,9 +108,9 @@ local URL matches the deployed one. A project with `:base-path "/your-project"`
 previews at `http://localhost:3000/your-project/`, and the server prints that
 full URL when it starts. A root-hosted project is served at `/` as before.
 
-That matters because the base path is baked into every generated URL. Serving
-the build at the server's root instead would render the homepage unstyled with
-every link dead, which is a confusing way to discover that your site is fine.
+The base path is baked into every generated URL. Serve the build at the
+server's root instead and the homepage renders unstyled with every link dead,
+even though the site itself is fine.
 
 ## Homepages
 
@@ -146,7 +146,7 @@ where one will do.
 
 ## Search
 
-Every site gets client-side search, with nothing to configure. A magnifier in
+Every site gets client-side search with nothing to configure. A magnifier in
 the nav opens it, `/` focuses the box, the arrow keys and Enter pick a hit, and
 a hit inside a collapsed section opens that section when you land on it.
 
@@ -160,7 +160,7 @@ a second copy would return every hit twice. Records are sorted by href so a
 rebuild is byte-identical, and each href carries the `:base-path`.
 
 lunr.js (vendored, 2.3.9, MIT) and the index load only when a reader first opens
-search. Someone who never searches downloads neither.
+search, so someone who never searches downloads neither.
 
 To turn it off, put `:search false` in `docs/site.edn`. The build then writes no
 index file, and the nav has no search box and no `search.js` tag.
@@ -176,16 +176,16 @@ The search is adapted from jolt-lang.net's own
 
 Every project's guide gets a `guide/contributing.html`, in the nav right
 after `index.md`, even without writing one. It comes from the engine's own
-`resources/content/contributing.md`, on the same footing as `base.html` or
-`404.html`: shared chrome, not a project's content, which is the point —
-"how to open an issue against a jlt-commons project" is the same answer
-everywhere, so it lives in one place instead of N copies that drift.
+`resources/content/contributing.md` and is treated like `base.html` or
+`404.html`, as shared chrome. How to open an issue against a jlt-commons
+project has the same answer everywhere, so the page lives in one place
+rather than in a copy per project that drifts.
 
 A project with something project-specific to say (a note on known-broken
 areas, its own escalation path, anything beyond the shared etiquette)
 writes its own `docs/guide/contributing.md`. That file is discovered the
-same way any other guide page is, and having one there replaces the
-engine's default outright rather than merging with it.
+same way as any other guide page, and it replaces the engine's default
+outright.
 
 This is the general shape for any future default page: the engine's
 `discover-doc-ids` adds its own basenames to a project's guide-dir root
@@ -198,17 +198,16 @@ one today.
 
 Standard markdown through `markdown-clj`, plus:
 
-- **Syntax highlighting** for Clojure and Scheme, via a vendored highlight.js.
-- **Mermaid diagrams.** A ```` ```mermaid ```` fence becomes a rendered diagram,
-  themed to match the reader's light or dark setting.
-- **Links between guide pages** are rewritten from `.md` to `.html`, including
+- Syntax highlighting for Clojure and Scheme, via a vendored highlight.js.
+- A ```` ```mermaid ```` fence becomes a rendered diagram, themed to match the
+  reader's light or dark setting.
+- Links between guide pages are rewritten from `.md` to `.html`, including
   across subdirectories.
-- **Long reference pages** get their `<h2>` sections wrapped in collapsible
-  `<details>`, with anchors, in-page find and printing all handled.
-- **Shareable heading links.** Every `<h1>`/`<h2>`/`<h3>` gets a small `#`
-  link, hidden until you hover or tab to it, the same "copy a direct link
-  to this section" affordance GitHub and Sphinx give their own headings.
-  Plain hash navigation, no clipboard JS.
+- Long reference pages get their `<h2>` sections wrapped in collapsible
+  `<details>`. Anchors, in-page find and printing still work.
+- Every `<h1>`/`<h2>`/`<h3>` gets a small `#` link to that section, hidden
+  until you hover or tab to it, like the ones GitHub and Sphinx put on their
+  headings. It's a plain hash link with no clipboard script.
 
 ## Publishing
 
