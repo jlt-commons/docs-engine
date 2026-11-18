@@ -5,9 +5,20 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      jolt-version:
+        description: "jolt version to install (blank = the pin below)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
+
+# The README says build, clean and test run under jolt as well as bb, so CI
+# runs them under both. Pinned to a release so an overnight jolt change can't
+# turn a docs-engine PR red; workflow_dispatch can try another version.
+env:
+  JOLT_VERSION: ${{ inputs.jolt-version || '0.8.27' }}
 
 # Scoped by ref, so a pull request build cannot supersede another pull
 # request's, and neither queues behind main.
@@ -28,6 +39,35 @@ jobs:
 
       - name: Test
         run: bb test
+
+      # The prebuilt jolt binary is self-contained and lands in ~/.local/bin.
+      # The version comes in through env, not interpolated into the script,
+      # so the dispatch input can't inject shell.
+      - name: Install jolt
+        run: |
+          set -euo pipefail
+          : "${JOLT_VERSION:?empty; the workflow-level pin did not resolve}"
+          curl --fail --retry 5 --retry-delay 5 --retry-all-errors -sL \
+            https://raw.githubusercontent.com/jolt-lang/jolt/main/install \
+            | bash -s -- --version "$JOLT_VERSION"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Test under jolt
+        run: |
+          jolt --version
+          jolt test
+
+      - name: Build under jolt
+        run: |
+          set -euo pipefail
+          root="$(mktemp -d)/jolt-project"
+          mkdir -p "$root/docs/guide"
+          printf '# Jolt\n\nBuilt by jolt.\n' > "$root/docs/guide/index.md"
+          printf '{:base-path "/jolt-project" :title "Jolt"}\n' > "$root/docs/site.edn"
+          jolt run build "$root"
+          test -f "$root/_site/guide/index.html" || { echo "jolt run build wrote no guide page"; exit 1; }
+          grep -q 'href="/jolt-project/css/screen.css"' "$root/_site/guide/index.html" \
+            || { echo "jolt build lost the base path"; exit 1; }
 
       # The tests build sites from fixtures, which proves the renderer but
       # not that the engine works against a real project laid out on disk.
