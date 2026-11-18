@@ -60,11 +60,11 @@
                  (println "docs-engine — the jlt-commons documentation site generator\n")
                  (println "  jolt run build <project>       generate <project>/_site/")
                  (println "  jolt run clean <project>       delete <project>/_site/")
-                 (println "  bb test                        run the test suite")
+                 (println "  jolt test                      run the test suite")
                  (println "  bb serve <project> [port]      build, then serve at localhost:3000\n")
-                 (println "build/clean run under either tool (jolt run <task>, not bare jolt <task>:")
-                 (println "build collides with jolt's own build -m NS subcommand). test/serve stay")
-                 (println "bb-only: jolt doesn't bundle clojure.test or http-kit.\n")
+                 (println "build/clean/test run under either tool (jolt run <task>, not bare jolt <task>:")
+                 (println "build collides with jolt's own build -m NS subcommand). serve stays")
+                 (println "bb-only: it uses http-kit.\n")
                  (println "A project configures itself in docs/site.edn. See README.md."))}
 
   test  {:doc "Run the full test suite"
