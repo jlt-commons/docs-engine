@@ -1,5 +1,5 @@
-;; bb.edn — docs-engine, the shared static-site generator for jlt-commons
-;; project documentation.
+;; deps.edn: docs-engine, the shared static-site generator for jlt-commons
+;; project documentation. It runs on jolt, which reads the :tasks below.
 ;;
 ;; Every task takes the path to a project checkout. The engine reads that
 ;; project's docs/ and writes its _site/, and touches nothing else.
@@ -10,9 +10,9 @@
          ;; resolvable under jolt. jolt-lang/yaml (below) supplies a
          ;; clj-yaml.core-compatible namespace that markdown.transformers'
          ;; own (:require [clj-yaml.core ...]) finds once the real one is
-         ;; excluded, on both hosts -- no per-host branching needed.
+         ;; excluded.
          ;;
-         ;; Safe to exclude on EITHER host, not just untested-so-far: the
+         ;; The exclusion is safe, not just untested-so-far: the
          ;; YAML branch only fires when a doc's first line is a literal
          ;; "---", and site.markdown's own unwrap-hard-wraps already
          ;; rewrites every "---"-only line to "***" before markdown-clj
@@ -27,24 +27,18 @@
                                     :exclusions [clj-commons/clj-yaml]}
          io.github.jolt-lang/yaml {:git/url "https://github.com/jolt-lang/yaml.git"
                                    :git/sha "baeb011f040ea8167917b1d600ac601bb746fea2"}
-         ;; babashka bundles selmer as a built-in, so this project never
-         ;; needed to declare it before. jolt doesn't bundle it the same
-         ;; way -- an explicit :mvn/version is what makes `jolt run build`
-         ;; able to resolve selmer.parser at all (see docs-engine#3).
+         ;; jolt doesn't bundle selmer, so an explicit :mvn/version is what
+         ;; makes `jolt run build` able to resolve selmer.parser at all (see
+         ;; docs-engine#3).
          selmer/selmer {:mvn/version "1.13.5"}
          ;; Selmer's date filters reference java.time.format.FormatStyle at
          ;; namespace-load time (see docs-engine#3). jolt has no built-in
          ;; java.time shim, but requiring jolt-lang/time installs one, and
          ;; that happens below, before any task-specific require, so it's
-         ;; in place before selmer.parser ever loads. Verified harmless
-         ;; under bb too: pure Clojure, no jolt.ffi, tick.core/now works
-         ;; unchanged (bb already has real java.time; this just adds tick's
-         ;; API on top of it).
+         ;; in place before selmer.parser ever loads.
          io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
                                    :git/sha "cdd785069e0e08a16c1ea9aae60f9532de21fad8"}
-         ;; The HTTP server behind `serve` under jolt. Only site/serve.jolt
-         ;; requires it, and bb never loads that file (bb's serve.clj uses
-         ;; http-kit, which bb bundles).
+         ;; The HTTP server behind `serve`. Only site/serve.clj requires it.
          io.github.jolt-lang/ring-chez-adapter {:git/url "https://github.com/jolt-lang/ring-chez-adapter.git"
                                                 :git/sha "387cf67ea7b6a8573c6ee6abca6026a45bc3b6bf"}}
  :tasks
@@ -70,7 +64,7 @@
                  (println "  jolt run test                    run the test suite")
                  (println "  jolt run serve <project> [port]  build, then serve at localhost:3000\n")
                  (println "Use jolt run <task>, not bare jolt <task>: build collides with jolt's own")
-                 (println "build -m NS subcommand. Every task also runs under babashka as bb <task>.\n")
+                 (println "build -m NS subcommand.\n")
                  (println "A project configures itself in docs/site.edn. See README.md."))}
 
   test  {:doc "Run the full test suite"
