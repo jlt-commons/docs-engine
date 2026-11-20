@@ -240,7 +240,8 @@ code {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1.5rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
   min-height: var(--nav-height);
 }
 
@@ -267,10 +268,15 @@ code {
   color: var(--accent);
 }
 
+/* Both wrap, so a nav with more links than a phone has room for (a site's
+   :nav-links add to Home, Docs and GitHub) goes onto a second line instead of
+   making the whole page wider than the screen. */
 .links {
   list-style: none;
   display: flex;
-  gap: 1.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.75rem;
 }
 
 .links a {
@@ -870,7 +876,8 @@ footer p {
 
 @media (max-width: 480px) {
   .links {
-    gap: 1rem;
+    gap: 0.4rem 1rem;
+    padding: 0;
   }
 
   .links a {
