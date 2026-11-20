@@ -52,7 +52,7 @@
    (that README's markdown, in place of the default). :index is the
    parsed search-documents.json, or nil when none was written."
   ([base] (build-fixture-site! base {}))
-  ([base {:keys [home-template? assets? diagram? mermaid-override readme? readme-text search no-h1?]}]
+  ([base {:keys [home-template? assets? diagram? mermaid-override readme? readme-text search no-h1? nav-links]}]
    (let [tmp       (fs/create-temp-dir {:prefix "jltc-site"})
          docs      (io/file (str tmp) "docs")
          guide     (io/file docs "guide")
@@ -85,6 +85,7 @@
                          :asset-dirs (when assets? [(io/file docs "media")])}
                   readme?                  (assoc :readme-file (io/file (str tmp) "README.md"))
                   (some? search)           (assoc :search search)
+                  nav-links                (assoc :nav-links nav-links)
                   (some? mermaid-override) (assoc :mermaid mermaid-override))]
        (core/generate! site)
        {:out   (:output-dir site)
@@ -94,6 +95,40 @@
         :doc   (when-not readme? (slurp (io/file (:output-dir site) "guide" "index.html")))
         :plain (slurp (io/file (:output-dir site) "guide" "plain.html"))
         :home  (slurp (io/file (:output-dir site) "index.html"))}))))
+
+(defn- nav-items
+  "The <li> entries of a page's top nav, up to the search box."
+  [html]
+  (let [nav (second (re-find #"(?s)<ul class=\"links\">(.*?)</ul>" html))]
+    (re-seq #"<li[^>]*><a href=\"[^\"]*\"[^>]*>[^<]*</a></li>" nav)))
+
+(deftest nav-links-render-between-docs-and-github-in-order
+  (let [{:keys [doc]} (build-fixture-site! "" {:nav-links [{:label "Fleet" :href "/fleet/"}
+                                                          {:label "Blog" :href "https://example.invalid/blog"}]})
+        items (nav-items doc)]
+    (is (= ["Home" "Docs" "Fleet" "Blog" "GitHub"]
+           (mapv #(second (re-find #">([^<]*)</a></li>$" %)) items)))
+    (is (some #(str/includes? % "<a href=\"/fleet/\">Fleet</a>") items))
+    (testing "an absolute URL stays as written"
+      (is (str/includes? doc "<li><a href=\"https://example.invalid/blog\">Blog</a></li>")))))
+
+(deftest nav-links-get-the-base-path-on-a-project-site
+  (let [{:keys [doc home]} (build-fixture-site! "/proj" {:nav-links [{:label "Fleet" :href "/fleet/"}
+                                                                   {:label "Blog" :href "https://example.invalid/blog"}]})]
+    (doseq [page [doc home]]
+      (is (str/includes? page "<li><a href=\"/proj/fleet/\">Fleet</a></li>"))
+      (is (str/includes? page "<li><a href=\"https://example.invalid/blog\">Blog</a></li>")))))
+
+(deftest a-site-without-nav-links-has-no-extra-nav-entries
+  (let [{:keys [doc]} (build-fixture-site! "")]
+    (is (= 3 (count (nav-items doc))))
+    (is (= 3 (count (nav-items (:doc (build-fixture-site! "" {:nav-links []}))))))
+    (is (= (nav-items doc) (nav-items (:doc (build-fixture-site! "" {:nav-links []})))))))
+
+(deftest a-nav-link-label-is-escaped
+  (let [{:keys [doc]} (build-fixture-site! "" {:nav-links [{:label "<b>Hi</b>" :href "/x/"}]})]
+    (is (str/includes? doc "&lt;b&gt;Hi&lt;/b&gt;"))
+    (is (not (str/includes? doc "<b>Hi</b>")))))
 
 (deftest root-hosted-build-uses-root-relative-asset-urls
   (let [{:keys [doc]} (build-fixture-site! "")]

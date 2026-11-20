@@ -67,3 +67,9 @@
   (is (= "templates" (str (fs/file-name (:templates-dir (project/resolve-project (scratch-project! nil)))))))
   (is (= "layouts" (str (fs/file-name (:templates-dir (project/resolve-project
                                                        (scratch-project! {:templates-dir "layouts"}))))))))
+
+(deftest nav-links-pass-through-from-site-edn
+  (is (not (contains? (project/resolve-project (scratch-project! nil)) :nav-links)))
+  (is (= [{:label "Fleet" :href "/fleet/"}]
+         (:nav-links (project/resolve-project
+                      (scratch-project! {:nav-links [{:label "Fleet" :href "/fleet/"}]}))))))

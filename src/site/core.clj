@@ -226,6 +226,16 @@
   [site]
   (not= false (:search site)))
 
+(defn nav-links
+  "The site's extra nav entries as {:label :href} maps. An href starting
+   with / is inside the site, so it gets the base path, the way the Home
+   link does. Anything else, an absolute URL for one, stays as written."
+  [site base]
+  (mapv (fn [{:keys [label href]}]
+          {:label label
+           :href  (if (str/starts-with? (str href) "/") (str base href) href)})
+        (:nav-links site)))
+
 (defn site-context
   "Template variables every page needs. site-base is the empty string for
    a root-hosted site and \"/name\" for a project site; every URL in the
@@ -237,6 +247,7 @@
      :site-brand      title
      :site-tagline    description
      :site-github-url github-url
+     :site-nav-links  (nav-links site base)
      :site-base       base
      :site-docs-href  (docs-href site base)}))
 

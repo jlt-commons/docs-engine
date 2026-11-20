@@ -26,7 +26,7 @@
       <ul class="links">
         <li {% ifequal page "home" %}class="selected"{% endifequal %}><a href="{{site-base}}/">Home</a></li>
         <li {% ifequal page "docs" %}class="selected"{% endifequal %}><a href="{{site-docs-href}}">Docs</a></li>
-        {% if site-github-url %}<li><a href="{{site-github-url}}" target="_blank" rel="noopener noreferrer">GitHub</a></li>{% endif %}
+        {% for link in site-nav-links %}<li><a href="{{link.href}}">{{link.label}}</a></li>{% endfor %}{% if site-github-url %}<li><a href="{{site-github-url}}" target="_blank" rel="noopener noreferrer">GitHub</a></li>{% endif %}
         {% if search %}<li>
           <div class="nav-search" id="nav-search" data-index="{{site-base}}/search-documents.json" data-lunr="{{site-base}}/vendor/lunr/lunr.min.js">
             <button type="button" class="search-toggle" id="search-toggle" aria-label="Open search" aria-expanded="false">
