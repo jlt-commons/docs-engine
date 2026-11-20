@@ -126,4 +126,5 @@
                            (:asset-dirs cfg))}
      ;; Only when the site said something. Absent means auto-detect per page,
      ;; which is right almost always; see site.core/mermaid-needed?.
-     (when (contains? cfg :mermaid) {:mermaid (:mermaid cfg)}))))
+     (when (contains? cfg :mermaid) {:mermaid (:mermaid cfg)})
+     (when (contains? cfg :nav-links) {:nav-links (:nav-links cfg)}))))

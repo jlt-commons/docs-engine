@@ -64,6 +64,7 @@ Leave `:base-path` as `""` only for a site served at a domain root.
 | `:templates-dir` | `templates` | Where project templates live, relative to `docs/` |
 | `:home-template` | none, so the generic homepage | A file in the templates dir |
 | `:search` | `true` | `false` turns off the search index, the nav search box and the script tag |
+| `:nav-links` | none | Extra nav links after Docs, as `[{:label "Fleet" :href "/fleet/"}]`. An href starting with `/` gets the base path, an absolute URL is left alone |
 
 `:asset-dirs` is an allowlist, and each entry names one directory directly under
 `docs/`, with no separators, no leading dot and no `..`. The list decides what
