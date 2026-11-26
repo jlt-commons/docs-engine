@@ -37,7 +37,7 @@
          ;; that happens below, before any task-specific require, so it's
          ;; in place before selmer.parser ever loads.
          io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                   :git/sha "cdd785069e0e08a16c1ea9aae60f9532de21fad8"}
+                                   :git/sha "5104b050e331ff4fadd7488c958bf121ca5c91d9"}
          ;; The HTTP server behind `serve`. Only site/serve.clj requires it.
          io.github.jolt-lang/ring-chez-adapter {:git/url "https://github.com/jolt-lang/ring-chez-adapter.git"
                                                 :git/sha "387cf67ea7b6a8573c6ee6abca6026a45bc3b6bf"}}
